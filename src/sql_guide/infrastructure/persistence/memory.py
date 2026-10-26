@@ -4,9 +4,11 @@ import copy
 from typing import Self
 from uuid import UUID
 
-from sql_guide.domain.errors import EmailAlreadyRegistered
+from sql_guide.domain.errors import EmailAlreadyRegistered, YandexSignInFailed
+from sql_guide.domain.external import ExternalIdentity
 from sql_guide.domain.learner import LearnerProfile
 from sql_guide.domain.ports import (
+    ExternalIdentityRepository,
     LearnerProfileRepository,
     RefreshTokenRepository,
     UserRepository,
@@ -23,6 +25,7 @@ class MemoryStore:
         self.users: dict[UUID, User] = {}
         self.profiles: dict[UUID, LearnerProfile] = {}
         self.refresh_tokens: dict[str, StoredRefreshToken] = {}
+        self.identities: dict[tuple[str, str], ExternalIdentity] = {}
 
 
 class InMemoryUserRepository:
@@ -84,6 +87,24 @@ class InMemoryRefreshTokenRepository:
         self._store.refresh_tokens.pop(token_hash, None)
 
 
+class InMemoryExternalIdentityRepository:
+    """Provider-link repository over a memory store."""
+
+    def __init__(self, store: MemoryStore) -> None:
+        self._store = store
+
+    async def add(self, identity: ExternalIdentity) -> None:
+        """Insert a provider link or reject a duplicate subject."""
+        key = (identity.provider, identity.subject)
+        if key in self._store.identities:
+            raise YandexSignInFailed
+        self._store.identities[key] = identity
+
+    async def get(self, provider: str, subject: str) -> ExternalIdentity | None:
+        """Return the link for a provider subject."""
+        return self._store.identities.get((provider, subject))
+
+
 class InMemoryUnitOfWork:
     """Transaction over a memory store, restored when the body fails."""
 
@@ -99,6 +120,8 @@ class InMemoryUnitOfWork:
         self.refresh_tokens: RefreshTokenRepository = InMemoryRefreshTokenRepository(
             store
         )
+        identities = InMemoryExternalIdentityRepository(store)
+        self.identities: ExternalIdentityRepository = identities
         self._snapshot = copy.deepcopy(store)
 
     async def __aenter__(self) -> Self:
@@ -130,6 +153,8 @@ class InMemoryUnitOfWork:
             self._store.profiles.update(self._snapshot.profiles)
             self._store.refresh_tokens.clear()
             self._store.refresh_tokens.update(self._snapshot.refresh_tokens)
+            self._store.identities.clear()
+            self._store.identities.update(self._snapshot.identities)
 
     async def commit(self) -> None:
         """Keep the current memory state."""

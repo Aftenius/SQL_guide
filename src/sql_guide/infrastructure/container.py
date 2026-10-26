@@ -13,6 +13,8 @@ from sql_guide.application.sessions import (
     LogoutUser,
     RefreshSession,
 )
+from sql_guide.application.yandex_sign_in import SignInWithYandex
+from sql_guide.domain.yandex import YandexClient
 from sql_guide.infrastructure.config import Settings, get_settings
 from sql_guide.infrastructure.persistence.unit_of_work import (
     SqlAlchemyUnitOfWorkFactory,
@@ -24,6 +26,7 @@ from sql_guide.infrastructure.security import (
     SystemClock,
     UuidIdGenerator,
 )
+from sql_guide.infrastructure.yandex import HttpxYandexClient
 
 
 @dataclass(slots=True)
@@ -39,6 +42,8 @@ class AppContainer:
         refresh_session: Refresh-token rotation use case.
         logout_user: Refresh-token revocation use case.
         get_current_learner: Bearer-token lookup use case.
+        yandex: Client that builds the Yandex URL and exchanges codes.
+        sign_in_with_yandex: Yandex sign-in use case.
     """
 
     settings: Settings
@@ -49,6 +54,8 @@ class AppContainer:
     refresh_session: RefreshSession
     logout_user: LogoutUser
     get_current_learner: GetCurrentLearner
+    yandex: YandexClient
+    sign_in_with_yandex: SignInWithYandex
 
 
 def build_container(settings: Settings | None = None) -> AppContainer:
@@ -73,6 +80,11 @@ def build_container(settings: Settings | None = None) -> AppContainer:
     )
     refresh_tokens = SecretRefreshTokenFactory()
     refresh_ttl = timedelta(days=resolved.refresh_token_ttl_days)
+    yandex = HttpxYandexClient(
+        resolved.yandex_client_id,
+        resolved.yandex_client_secret,
+        resolved.yandex_redirect_uri,
+    )
     return AppContainer(
         settings=resolved,
         engine=engine,
@@ -95,4 +107,14 @@ def build_container(settings: Settings | None = None) -> AppContainer:
         ),
         logout_user=LogoutUser(unit_of_work, refresh_tokens),
         get_current_learner=GetCurrentLearner(unit_of_work, access_tokens),
+        yandex=yandex,
+        sign_in_with_yandex=SignInWithYandex(
+            unit_of_work,
+            yandex,
+            UuidIdGenerator(),
+            clock,
+            access_tokens,
+            refresh_tokens,
+            refresh_ttl,
+        ),
     )

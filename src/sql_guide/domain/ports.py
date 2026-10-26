@@ -5,6 +5,7 @@ from types import TracebackType
 from typing import Protocol
 from uuid import UUID
 
+from sql_guide.domain.external import ExternalIdentity
 from sql_guide.domain.learner import LearnerProfile
 from sql_guide.domain.session import StoredRefreshToken
 from sql_guide.domain.user import Email, User, UserId
@@ -110,12 +111,25 @@ class RefreshTokenRepository(Protocol):
         ...
 
 
+class ExternalIdentityRepository(Protocol):
+    """Persistence for provider sign-ins."""
+
+    async def add(self, identity: ExternalIdentity) -> None:
+        """Attach a provider subject to an account."""
+        ...
+
+    async def get(self, provider: str, subject: str) -> ExternalIdentity | None:
+        """Return the link for a provider subject, if it exists."""
+        ...
+
+
 class UnitOfWork(Protocol):
     """One transaction covering account and progress writes."""
 
     users: UserRepository
     profiles: LearnerProfileRepository
     refresh_tokens: RefreshTokenRepository
+    identities: ExternalIdentityRepository
 
     async def commit(self) -> None:
         """Make the transaction durable."""

@@ -61,12 +61,14 @@ class LoginUser:
         email = Email.parse(command.email)
         async with self._uow_factory() as uow:
             user = await uow.users.get_by_email(email)
-            password_matches = user is not None and self._hasher.verify(
-                command.password, user.password_hash
+            stored_hash = None if user is None else user.password_hash
+            password_matches = stored_hash is not None and self._hasher.verify(
+                command.password,
+                stored_hash,
             )
             if user is None or not password_matches:
                 raise InvalidCredentials
-            return await _issue_session(
+            return await issue_session(
                 uow,
                 user.id,
                 self._access_tokens,
@@ -120,7 +122,7 @@ class RefreshSession:
             if stored is None or stored.expires_at <= self._clock.now():
                 raise InvalidToken
             await uow.refresh_tokens.delete(token_hash)
-            return await _issue_session(
+            return await issue_session(
                 uow,
                 stored.user_id,
                 self._access_tokens,
@@ -203,7 +205,7 @@ class GetCurrentLearner:
             )
 
 
-async def _issue_session(
+async def issue_session(
     uow: UnitOfWork,
     user_id: UserId,
     access_tokens: AccessTokenIssuer,

@@ -5,11 +5,13 @@ from typing import Self
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from sql_guide.domain.ports import (
+    ExternalIdentityRepository,
     LearnerProfileRepository,
     RefreshTokenRepository,
     UserRepository,
 )
 from sql_guide.infrastructure.persistence.repositories import (
+    SqlExternalIdentityRepository,
     SqlLearnerProfileRepository,
     SqlRefreshTokenRepository,
     SqlUserRepository,
@@ -31,6 +33,9 @@ class SqlAlchemyUnitOfWork:
             self._session
         )
         self.refresh_tokens: RefreshTokenRepository = SqlRefreshTokenRepository(
+            self._session
+        )
+        self.identities: ExternalIdentityRepository = SqlExternalIdentityRepository(
             self._session
         )
 

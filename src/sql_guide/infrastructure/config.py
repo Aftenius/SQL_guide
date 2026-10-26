@@ -16,6 +16,9 @@ class Settings(BaseSettings):
         refresh_token_ttl_days: Lifetime of a refresh token.
         cookie_secure: Whether the refresh cookie requires HTTPS.
         password_hash_rounds: bcrypt cost used for new passwords.
+        yandex_client_id: Yandex OAuth client id.
+        yandex_client_secret: Yandex OAuth client secret.
+        yandex_redirect_uri: Callback URL registered in Yandex.
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -29,6 +32,9 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = 14
     cookie_secure: bool = False
     password_hash_rounds: int = 12
+    yandex_client_id: str = ""
+    yandex_client_secret: str = ""
+    yandex_redirect_uri: str = "http://127.0.0.1:8000/auth/yandex/callback"
 
 
 @lru_cache(maxsize=1)

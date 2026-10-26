@@ -67,11 +67,11 @@ class User:
     Attributes:
         id: Stable account id.
         email: Login name.
-        password_hash: One-way hash. The plain password is never stored.
+        password_hash: One-way hash, or None when the account signs in with Yandex only.
         created_at: Moment the account was created.
     """
 
     id: UserId
     email: Email
-    password_hash: str
+    password_hash: str | None
     created_at: datetime

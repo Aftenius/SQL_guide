@@ -32,3 +32,9 @@ class AccessTokenResponse(BaseModel):
 
     access_token: str
     token_type: str = "bearer"
+
+
+class AuthorizationUrlResponse(BaseModel):
+    """Browser URL that starts Yandex sign-in."""
+
+    authorization_url: str

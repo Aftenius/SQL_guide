@@ -11,6 +11,7 @@ from sql_guide.application.sessions import (
     LogoutUser,
     RefreshSession,
 )
+from sql_guide.application.yandex_sign_in import SignInWithYandex
 from sql_guide.infrastructure.config import Settings
 from sql_guide.infrastructure.container import AppContainer
 from sql_guide.infrastructure.persistence.memory import InMemoryUnitOfWorkFactory
@@ -20,6 +21,7 @@ from sql_guide.infrastructure.security import (
     SecretRefreshTokenFactory,
     UuidIdGenerator,
 )
+from tests.fake_yandex import FakeYandexClient
 
 
 class FixedClock:
@@ -52,6 +54,8 @@ class IdentityHarness:
     refresh_session: RefreshSession
     logout_user: LogoutUser
     get_current_learner: GetCurrentLearner
+    yandex: FakeYandexClient
+    sign_in_with_yandex: SignInWithYandex
     clock: FixedClock
 
 
@@ -71,6 +75,7 @@ def build_harness() -> IdentityHarness:
     )
     refresh_tokens = SecretRefreshTokenFactory()
     refresh_ttl = timedelta(days=14)
+    yandex = FakeYandexClient()
     return IdentityHarness(
         factory=factory,
         register_user=RegisterUser(factory, hasher, UuidIdGenerator(), clock),
@@ -91,6 +96,16 @@ def build_harness() -> IdentityHarness:
         ),
         logout_user=LogoutUser(factory, refresh_tokens),
         get_current_learner=GetCurrentLearner(factory, access_tokens),
+        yandex=yandex,
+        sign_in_with_yandex=SignInWithYandex(
+            factory,
+            yandex,
+            UuidIdGenerator(),
+            clock,
+            access_tokens,
+            refresh_tokens,
+            refresh_ttl,
+        ),
         clock=clock,
     )
 
@@ -117,4 +132,6 @@ def build_test_container() -> AppContainer:
         refresh_session=harness.refresh_session,
         logout_user=harness.logout_user,
         get_current_learner=harness.get_current_learner,
+        yandex=harness.yandex,
+        sign_in_with_yandex=harness.sign_in_with_yandex,
     )

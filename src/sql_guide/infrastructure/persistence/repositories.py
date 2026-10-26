@@ -4,11 +4,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sql_guide.domain.errors import EmailAlreadyRegistered
+from sql_guide.domain.errors import EmailAlreadyRegistered, YandexSignInFailed
+from sql_guide.domain.external import ExternalIdentity
 from sql_guide.domain.learner import LearnerProfile
 from sql_guide.domain.session import StoredRefreshToken
 from sql_guide.domain.user import Email, User, UserId
 from sql_guide.infrastructure.persistence.models import (
+    ExternalIdentityModel,
     LearnerProfileModel,
     RefreshTokenModel,
     UserModel,
@@ -181,3 +183,55 @@ class SqlRefreshTokenRepository:
             RefreshTokenModel.token_hash == token_hash
         )
         await self._session.execute(statement)
+
+
+class SqlExternalIdentityRepository:
+    """Provider-link repository backed by the current session."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Bind the repository to an open session.
+
+        Args:
+            session: Session owned by the unit of work.
+        """
+        self._session = session
+
+    async def add(self, identity: ExternalIdentity) -> None:
+        """Insert a provider link.
+
+        Args:
+            identity: Provider subject to attach.
+
+        Raises:
+            YandexSignInFailed: The provider subject is already stored.
+        """
+        self._session.add(
+            ExternalIdentityModel(
+                provider=identity.provider,
+                subject=identity.subject,
+                user_id=identity.user_id.value,
+            )
+        )
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            raise YandexSignInFailed from exc
+
+    async def get(self, provider: str, subject: str) -> ExternalIdentity | None:
+        """Load a provider link.
+
+        Args:
+            provider: Provider name.
+            subject: Provider's stable user id.
+
+        Returns:
+            The link, or None when it does not exist.
+        """
+        row = await self._session.get(ExternalIdentityModel, (provider, subject))
+        if row is None:
+            return None
+        return ExternalIdentity(
+            provider=row.provider,
+            subject=row.subject,
+            user_id=UserId(row.user_id),
+        )

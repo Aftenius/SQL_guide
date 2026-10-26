@@ -18,7 +18,7 @@ class UserModel(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -54,5 +54,19 @@ class RefreshTokenModel(Base):
     )
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        nullable=False,
+    )
+
+
+class ExternalIdentityModel(Base):
+    """Provider subject linked to an account."""
+
+    __tablename__ = "external_identities"
+
+    provider: Mapped[str] = mapped_column(String(32), primary_key=True)
+    subject: Mapped[str] = mapped_column(String(128), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )

@@ -8,8 +8,10 @@ from sql_guide.domain.errors import (
     EmailAlreadyRegistered,
     InvalidCredentials,
     InvalidEmail,
+    InvalidOAuthState,
     InvalidToken,
     WeakPassword,
+    YandexSignInFailed,
 )
 
 _MESSAGES: dict[type[DomainError], tuple[int, str]] = {
@@ -18,6 +20,8 @@ _MESSAGES: dict[type[DomainError], tuple[int, str]] = {
     EmailAlreadyRegistered: (409, "Email is already registered"),
     InvalidCredentials: (401, "Invalid email or password"),
     InvalidToken: (401, "Invalid or expired session"),
+    InvalidOAuthState: (401, "Yandex sign-in could not be confirmed"),
+    YandexSignInFailed: (401, "Yandex sign-in failed"),
 }
 
 

@@ -23,3 +23,11 @@ class InvalidCredentials(DomainError):
 
 class InvalidToken(DomainError):
     """Raised when a session token is missing, expired, or forged."""
+
+
+class InvalidOAuthState(DomainError):
+    """Raised when the Yandex callback state does not match the cookie."""
+
+
+class YandexSignInFailed(DomainError):
+    """Raised when Yandex does not return a usable account."""
