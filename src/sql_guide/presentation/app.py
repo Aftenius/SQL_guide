@@ -1,10 +1,13 @@
 """FastAPI application factory."""
 
+import asyncio
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from sql_guide.infrastructure.container import AppContainer, build_container
 from sql_guide.infrastructure.event_loop import use_selector_event_loop
@@ -55,20 +58,41 @@ def create_app(container: AppContainer | None = None) -> FastAPI:
             await engine.dispose()
 
     app = FastAPI(title=resolved.settings.app_name, lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_frontend_origins(resolved.settings.frontend_origin),
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
     register_domain_errors(app)
     app.include_router(create_health_router(resolved))
     app.include_router(create_auth_router(resolved))
     return app
 
 
+def _frontend_origins(origin: str) -> list[str]:
+    """Allow the configured UI origin and its localhost alias."""
+    origins = [origin]
+    if "127.0.0.1" in origin:
+        origins.append(origin.replace("127.0.0.1", "localhost"))
+    return origins
+
+
 app = create_app()
 
 
 def main() -> None:
-    """Run the API for local development."""
-    uvicorn.run(
+    """Run the API for local development.
+
+    Uvicorn's default Windows loop is Proactor, which psycopg cannot use.
+    """
+    use_selector_event_loop()
+    config = uvicorn.Config(
         "sql_guide.presentation.app:app",
         host="127.0.0.1",
         port=8000,
-        factory=False,
     )
+    server = uvicorn.Server(config)
+    factory = asyncio.SelectorEventLoop if sys.platform == "win32" else None
+    asyncio.run(server.serve(), loop_factory=factory)

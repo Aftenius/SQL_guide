@@ -19,6 +19,7 @@ class Settings(BaseSettings):
         yandex_client_id: Yandex OAuth client id.
         yandex_client_secret: Yandex OAuth client secret.
         yandex_redirect_uri: Callback URL registered in Yandex.
+        frontend_origin: Browser origin allowed to call the API.
         sandbox_database_url: Database where learner SQL is executed.
     """
 
@@ -35,7 +36,8 @@ class Settings(BaseSettings):
     password_hash_rounds: int = 12
     yandex_client_id: str = ""
     yandex_client_secret: str = ""
-    yandex_redirect_uri: str = "http://127.0.0.1:8000/auth/yandex/callback"
+    yandex_redirect_uri: str = "http://127.0.0.1:5173/login/yandex"
+    frontend_origin: str = "http://127.0.0.1:5173"
     sandbox_database_url: str = (
         "postgresql://sql_guide:sql_guide@127.0.0.1:5433/sql_guide_sandbox"
     )
