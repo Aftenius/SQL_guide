@@ -31,3 +31,15 @@ class InvalidOAuthState(DomainError):
 
 class YandexSignInFailed(DomainError):
     """Raised when Yandex does not return a usable account."""
+
+
+class UnsafeSql(DomainError):
+    """Raised when a statement is outside the sandbox policy."""
+
+
+class SandboxQueryFailed(DomainError):
+    """Raised when a safe statement is rejected by the database."""
+
+
+class SandboxSetupFailed(DomainError):
+    """Raised when trusted setup SQL cannot be applied."""

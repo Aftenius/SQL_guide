@@ -19,6 +19,7 @@ class Settings(BaseSettings):
         yandex_client_id: Yandex OAuth client id.
         yandex_client_secret: Yandex OAuth client secret.
         yandex_redirect_uri: Callback URL registered in Yandex.
+        sandbox_database_url: Database where learner SQL is executed.
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -35,6 +36,9 @@ class Settings(BaseSettings):
     yandex_client_id: str = ""
     yandex_client_secret: str = ""
     yandex_redirect_uri: str = "http://127.0.0.1:8000/auth/yandex/callback"
+    sandbox_database_url: str = (
+        "postgresql://sql_guide:sql_guide@127.0.0.1:5433/sql_guide_sandbox"
+    )
 
 
 @lru_cache(maxsize=1)
