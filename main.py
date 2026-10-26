@@ -1,7 +1,6 @@
-def main() -> None:
-    """Print a short greeting from the SQL guide project."""
-    print("Hello from sql-guide!")
+"""Local entry point for the SQL guide API."""
 
+from sql_guide.presentation.app import main
 
 if __name__ == "__main__":
     main()
