@@ -11,3 +11,11 @@ wheels/
 
 # Local secrets
 .env
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
