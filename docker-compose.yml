@@ -5,8 +5,6 @@ services:
       POSTGRES_USER: sql_guide
       POSTGRES_PASSWORD: sql_guide
       POSTGRES_DB: sql_guide
-    ports:
-      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sql_guide -d sql_guide"]
       interval: 5s
@@ -15,6 +13,37 @@ services:
     volumes:
       - sql_guide_pg:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+
+  app:
+    build: .
+    ports:
+      - "1515:1515"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://sql_guide:sql_guide@postgres:5432/sql_guide
+      SANDBOX_DATABASE_URL: postgresql://sql_guide:sql_guide@postgres:5432/sql_guide_sandbox
+      JWT_SECRET: ${JWT_SECRET:-sql-guide-docker-change-this-secret-key}
+      FRONTEND_ORIGIN: ${PUBLIC_ORIGIN:-http://127.0.0.1:1515}
+      YANDEX_REDIRECT_URI: ${PUBLIC_ORIGIN:-http://127.0.0.1:1515}/login/yandex
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      MODEL_SECRET: ${MODEL_SECRET:-}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:1515/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 25s
+    restart: unless-stopped
 
 volumes:
   sql_guide_pg:

@@ -1,22 +1,36 @@
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Outfit", "Segoe UI", sans-serif;
-  --font-serif: "Literata", Georgia, serif;
-  --color-paper: #f3efe6;
-  --color-ink: #1c1915;
-  --color-moss: #1b5e45;
-  --color-moss-dark: #123d2d;
-  --color-line: #e3dccb;
-  --color-card: #fffdf8;
-  --color-muted: #4a453c;
-  --color-danger: #8d2b2b;
+  --font-sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-serif: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-hand: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-code: "IBM Plex Mono", ui-monospace, monospace;
+  --color-paper: #f6f3eb;
+  --color-canvas: #faf7ef;
+  --color-pencil: #2d3142;
+  --color-ink: #2b2b2b;
+  --color-muted: #57534e;
+  --color-danger: #9f1239;
+  --color-accent: #4f46e5;
 }
 
 body {
   margin: 0;
-  background: var(--color-paper);
-  color: var(--color-ink);
+  min-height: 100dvh;
+  background-color: #f6f3eb;
+  background-image:
+    radial-gradient(#d3cbbd 1.1px, transparent 1.1px),
+    radial-gradient(#d3cbbd 1.1px, #f6f3eb 1.1px);
+  background-size: 24px 24px;
+  background-position:
+    0 0,
+    12px 12px;
+  color: #2b2b2b;
   font-family: var(--font-sans);
 }
 
@@ -25,6 +39,71 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-moss);
+  outline: 2px solid #4f46e5;
   outline-offset: 3px;
+}
+
+.sketch-box {
+  border: 2px solid #2b2b2b;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  box-shadow: 3px 3px 0 rgb(40 40 40 / 0.9);
+}
+
+.sketch-button {
+  border: 2.2px solid #242424;
+  border-radius: 255px 25px 225px 25px / 25px 225px 25px 255px;
+  box-shadow: 3px 3px 0 #242424;
+  cursor: pointer;
+}
+
+.sketch-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #242424;
+}
+
+.sketch-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #242424;
+}
+
+.sketch-pill {
+  border: 1.8px solid #2b2b2b;
+  border-radius: 999px 10px 999px 8px / 12px 999px 14px 999px;
+}
+
+.sticky-note {
+  background: #fef9c3;
+  border: 2px solid #292524;
+  border-radius: 4px 18px 5px 22px / 20px 4px 21px 3px;
+  box-shadow: 4px 4px 0 rgb(0 0 0 / 0.85);
+  transform: rotate(-0.7deg);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #eee8dc;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #78716c;
+  border: 1px solid #292524;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sketch-box,
+  .sketch-button,
+  .sticky-note {
+    transition: none;
+  }
+
+  .sketch-button:hover,
+  .sketch-button:active,
+  .sticky-note {
+    transform: none;
+  }
 }

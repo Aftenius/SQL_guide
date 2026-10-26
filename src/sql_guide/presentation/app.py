@@ -13,6 +13,8 @@ from sql_guide.infrastructure.container import AppContainer, build_container
 from sql_guide.infrastructure.event_loop import use_selector_event_loop
 from sql_guide.presentation.auth import create_auth_router
 from sql_guide.presentation.errors import register_domain_errors
+from sql_guide.presentation.learner_model import create_learner_model_router
+from sql_guide.presentation.practice import create_practice_router
 from sql_guide.presentation.schemas import HealthResponse
 
 use_selector_event_loop()
@@ -68,6 +70,8 @@ def create_app(container: AppContainer | None = None) -> FastAPI:
     register_domain_errors(app)
     app.include_router(create_health_router(resolved))
     app.include_router(create_auth_router(resolved))
+    app.include_router(create_practice_router(resolved))
+    app.include_router(create_learner_model_router(resolved))
     return app
 
 

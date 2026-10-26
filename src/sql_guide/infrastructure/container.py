@@ -6,6 +6,14 @@ from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 
 from sql_guide.application.health import GetHealthStatus
+from sql_guide.application.learner_model import (
+    CheckLearnerModel,
+    ClearLearnerModel,
+    DescribeLearnerModel,
+    ReadLearnerModelKey,
+    SaveLearnerModel,
+)
+from sql_guide.application.practice import GetPracticeCalendar, RecordSolve
 from sql_guide.application.register_user import RegisterUser
 from sql_guide.application.sessions import (
     GetCurrentLearner,
@@ -16,6 +24,8 @@ from sql_guide.application.sessions import (
 from sql_guide.application.yandex_sign_in import SignInWithYandex
 from sql_guide.domain.yandex import YandexClient
 from sql_guide.infrastructure.config import Settings, get_settings
+from sql_guide.infrastructure.model_cipher import FernetModelCipher
+from sql_guide.infrastructure.model_probe import HttpxModelProbe
 from sql_guide.infrastructure.persistence.unit_of_work import (
     SqlAlchemyUnitOfWorkFactory,
 )
@@ -44,6 +54,13 @@ class AppContainer:
         get_current_learner: Bearer-token lookup use case.
         yandex: Client that builds the Yandex URL and exchanges codes.
         sign_in_with_yandex: Yandex sign-in use case.
+        record_solve: Use case that counts a solved step.
+        get_practice_calendar: Use case that reads the profile calendar.
+        describe_learner_model: Profile view of the saved model, without the key.
+        save_learner_model: Use case that encrypts and stores a model key.
+        clear_learner_model: Use case that removes the saved model key.
+        check_learner_model: Use case that asks the provider to accept the key.
+        read_learner_model_key: Server-side read of the decrypted key.
     """
 
     settings: Settings
@@ -56,6 +73,13 @@ class AppContainer:
     get_current_learner: GetCurrentLearner
     yandex: YandexClient
     sign_in_with_yandex: SignInWithYandex
+    record_solve: RecordSolve
+    get_practice_calendar: GetPracticeCalendar
+    describe_learner_model: DescribeLearnerModel
+    save_learner_model: SaveLearnerModel
+    clear_learner_model: ClearLearnerModel
+    check_learner_model: CheckLearnerModel
+    read_learner_model_key: ReadLearnerModelKey
 
 
 def build_container(settings: Settings | None = None) -> AppContainer:
@@ -116,5 +140,23 @@ def build_container(settings: Settings | None = None) -> AppContainer:
             access_tokens,
             refresh_tokens,
             refresh_ttl,
+        ),
+        record_solve=RecordSolve(unit_of_work, clock),
+        get_practice_calendar=GetPracticeCalendar(unit_of_work, clock),
+        describe_learner_model=DescribeLearnerModel(unit_of_work),
+        save_learner_model=SaveLearnerModel(
+            unit_of_work,
+            FernetModelCipher(resolved.model_key_secret()),
+            clock,
+        ),
+        clear_learner_model=ClearLearnerModel(unit_of_work),
+        check_learner_model=CheckLearnerModel(
+            unit_of_work,
+            FernetModelCipher(resolved.model_key_secret()),
+            HttpxModelProbe(),
+        ),
+        read_learner_model_key=ReadLearnerModelKey(
+            unit_of_work,
+            FernetModelCipher(resolved.model_key_secret()),
         ),
     )

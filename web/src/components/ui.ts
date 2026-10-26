@@ -1,10 +1,10 @@
 export const buttonClass =
-  "inline-flex min-h-11 items-center justify-center rounded-md bg-moss px-4 text-sm font-medium text-white hover:bg-moss-dark disabled:opacity-60";
+  "sketch-button inline-flex min-h-11 items-center justify-center bg-yellow-300 px-4 text-sm font-semibold text-pencil disabled:opacity-60";
 
 export const buttonQuietClass =
-  "inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-card px-4 text-sm font-medium text-ink hover:border-moss";
+  "sketch-button inline-flex min-h-11 items-center justify-center bg-white px-4 text-sm font-semibold text-pencil disabled:opacity-60";
 
 export const fieldClass =
-  "min-h-11 w-full rounded-md border border-line bg-card px-3 text-base text-ink";
+  "min-h-11 w-full border-2 border-pencil bg-canvas px-3 text-base text-pencil";
 
-export const cardClass = "rounded-lg border border-line bg-card p-5";
+export const cardClass = "sketch-box block bg-white p-5";

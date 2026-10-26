@@ -37,18 +37,18 @@ export function YandexCallbackPage() {
 
   return (
     <section className="max-w-xl">
-      <h1 className="font-serif text-3xl">Вход через Яндекс</h1>
+      <h1 className="text-3xl font-bold">Вход через Яндекс</h1>
       {error ? (
         <>
           <p role="alert" className="mt-4 text-danger">
             {error}
           </p>
-          <Link to="/login" className="mt-4 inline-flex min-h-11 items-center text-moss">
+          <Link to="/login" className="mt-4 inline-flex min-h-11 items-center text-indigo-700">
             Вернуться ко входу
           </Link>
         </>
       ) : (
-        <p className="mt-4 text-muted">Подтверждаем вход и открываем курс.</p>
+        <p className="mt-4 text-base text-stone-600">Подтверждаем вход и открываем курс.</p>
       )}
     </section>
   );

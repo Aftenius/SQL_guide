@@ -1,4 +1,3 @@
-import { ChevronRight } from "lucide-react";
 import { Link, useLocation, useMatches } from "react-router";
 
 import { breadcrumbItems } from "../breadcrumbs";
@@ -10,24 +9,23 @@ export function Breadcrumbs() {
   if (pathname === "/" || items.length < 2) return null;
 
   return (
-    <nav aria-label="Навигационная цепочка" className="border-b border-line">
-      <ol className="mx-auto flex max-w-5xl flex-wrap items-center gap-1 px-4 py-2 text-sm">
+    <nav aria-label="Навигационная цепочка">
+      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         {items.map((item, index) => {
           const last = index === items.length - 1;
           return (
-            <li key={item.href} className="flex items-center gap-1">
+            <li key={item.href} className="flex items-center gap-2">
               {index > 0 ? (
-                <ChevronRight aria-hidden="true" className="size-4 text-muted" />
+                <span aria-hidden="true" className="text-stone-400">
+                  →
+                </span>
               ) : null}
               {last ? (
-                <span aria-current="page" className="font-medium text-ink">
+                <span aria-current="page" className="font-bold text-pencil">
                   {item.label}
                 </span>
               ) : (
-                <Link
-                  to={item.href}
-                  className="inline-flex min-h-11 items-center text-muted hover:text-ink"
-                >
+                <Link to={item.href} className="inline-flex min-h-11 items-center text-stone-600 underline">
                   {item.label}
                 </Link>
               )}

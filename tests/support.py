@@ -4,6 +4,14 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sql_guide.application.health import GetHealthStatus
+from sql_guide.application.learner_model import (
+    CheckLearnerModel,
+    ClearLearnerModel,
+    DescribeLearnerModel,
+    ReadLearnerModelKey,
+    SaveLearnerModel,
+)
+from sql_guide.application.practice import GetPracticeCalendar, RecordSolve
 from sql_guide.application.register_user import RegisterUser
 from sql_guide.application.sessions import (
     GetCurrentLearner,
@@ -14,6 +22,7 @@ from sql_guide.application.sessions import (
 from sql_guide.application.yandex_sign_in import SignInWithYandex
 from sql_guide.infrastructure.config import Settings
 from sql_guide.infrastructure.container import AppContainer
+from sql_guide.infrastructure.model_cipher import FernetModelCipher
 from sql_guide.infrastructure.persistence.memory import InMemoryUnitOfWorkFactory
 from sql_guide.infrastructure.security import (
     BcryptPasswordHasher,
@@ -21,6 +30,7 @@ from sql_guide.infrastructure.security import (
     SecretRefreshTokenFactory,
     UuidIdGenerator,
 )
+from tests.fake_model import FakeModelProbe
 from tests.fake_yandex import FakeYandexClient
 
 
@@ -56,6 +66,7 @@ class IdentityHarness:
     get_current_learner: GetCurrentLearner
     yandex: FakeYandexClient
     sign_in_with_yandex: SignInWithYandex
+    model_probe: FakeModelProbe
     clock: FixedClock
 
 
@@ -76,6 +87,7 @@ def build_harness() -> IdentityHarness:
     refresh_tokens = SecretRefreshTokenFactory()
     refresh_ttl = timedelta(days=14)
     yandex = FakeYandexClient()
+    model_probe = FakeModelProbe()
     return IdentityHarness(
         factory=factory,
         register_user=RegisterUser(factory, hasher, UuidIdGenerator(), clock),
@@ -106,6 +118,7 @@ def build_harness() -> IdentityHarness:
             refresh_tokens,
             refresh_ttl,
         ),
+        model_probe=model_probe,
         clock=clock,
     )
 
@@ -134,4 +147,23 @@ def build_test_container() -> AppContainer:
         get_current_learner=harness.get_current_learner,
         yandex=harness.yandex,
         sign_in_with_yandex=harness.sign_in_with_yandex,
+        record_solve=RecordSolve(harness.factory, harness.clock),
+        get_practice_calendar=GetPracticeCalendar(harness.factory, harness.clock),
+        describe_learner_model=DescribeLearnerModel(harness.factory),
+        save_learner_model=SaveLearnerModel(
+            harness.factory,
+            _test_cipher(),
+            harness.clock,
+        ),
+        clear_learner_model=ClearLearnerModel(harness.factory),
+        check_learner_model=CheckLearnerModel(
+            harness.factory,
+            _test_cipher(),
+            harness.model_probe,
+        ),
+        read_learner_model_key=ReadLearnerModelKey(harness.factory, _test_cipher()),
     )
+
+
+def _test_cipher() -> FernetModelCipher:
+    return FernetModelCipher("test-secret-must-be-at-least-32-bytes")

@@ -6,6 +6,7 @@ import { LoginPage, RegisterPage } from "./pages/AuthForm";
 import { LessonPage, TrackPage, TracksPage } from "./pages/CoursePages";
 import { HomePage } from "./pages/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { YandexCallbackPage } from "./pages/YandexCallbackPage";
 
 export const router = createBrowserRouter([
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: "profile", element: <ProfilePage />, handle: { crumb: "Профиль" } },
       { path: "login", element: <LoginPage />, handle: { crumb: "Вход" } },
       { path: "register", element: <RegisterPage />, handle: { crumb: "Регистрация" } },
       {

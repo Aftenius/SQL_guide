@@ -68,8 +68,8 @@ function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   return (
     <section className={`${cardClass} mx-auto max-w-md`}>
-      <h1 className="font-serif text-3xl">{title}</h1>
-      <p className="mt-2 text-muted">Аккаунт хранит прогресс по тем же адресам уроков.</p>
+      <h1 className="text-3xl font-bold">{title}</h1>
+      <p className="mt-2 text-base text-stone-600">Аккаунт хранит прогресс по тем же адресам уроков.</p>
       <form className="mt-6 grid gap-4" onSubmit={(event) => void onSubmit(event)} noValidate>
         <label className="grid gap-1 text-sm font-medium">
           Почта
@@ -113,13 +113,13 @@ function AuthForm({ mode }: { mode: "login" | "register" }) {
           Войти через Яндекс ID
         </button>
       ) : null}
-      <p className="mt-4 text-sm text-muted">
+      <p className="mt-4 text-sm text-stone-600">
         {isLogin ? (
-          <Link to={`/register?next=${encodeURIComponent(next)}`} className="text-moss">
+          <Link to={`/register?next=${encodeURIComponent(next)}`} className="text-indigo-700">
             Создать аккаунт
           </Link>
         ) : (
-          <Link to={`/login?next=${encodeURIComponent(next)}`} className="text-moss">
+          <Link to={`/login?next=${encodeURIComponent(next)}`} className="text-indigo-700">
             У меня уже есть аккаунт
           </Link>
         )}

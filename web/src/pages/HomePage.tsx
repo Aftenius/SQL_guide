@@ -1,34 +1,34 @@
 import { Link } from "react-router";
 
 import { stepCount, trackPath, tracks } from "../catalog";
-import { cardClass, buttonClass } from "../components/ui";
+import { buttonClass, cardClass } from "../components/ui";
 import { usePageTitle } from "../title";
 
 export function HomePage() {
   usePageTitle("SQL Guide");
 
   return (
-    <div className="grid gap-10">
-      <section className="max-w-2xl">
-        <h1 className="font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
-          SQL по одному адресу за шаг
-        </h1>
-        <p className="mt-4 text-lg text-muted">
-          Выборка, соединения, паттерны, масштаб и отказоустойчивость. У каждого шага
-          постоянный адрес, а прогресс остаётся в аккаунте.
+    <div className="grid gap-6">
+      <section className="sticky-note max-w-2xl p-5">
+        <p className="text-sm font-medium tracking-wide text-stone-600 uppercase">
+          с первой выборки до отказоустойчивости
         </p>
-        <Link to="/learn" className={`${buttonClass} mt-6`}>
-          Открыть курс
+        <h1 className="mt-1 text-4xl font-bold">SQL по одному адресу за шаг</h1>
+        <p className="mt-3 text-stone-800">
+          Выборка, соединения, паттерны, масштаб и архитектура. Прогресс остаётся в аккаунте.
+        </p>
+        <Link to="/learn" className={`${buttonClass} mt-5`}>
+          Открыть доску
         </Link>
       </section>
       <section aria-label="Разделы курса">
         <ul className="grid gap-4 sm:grid-cols-2">
           {tracks.map((track) => (
             <li key={track.slug}>
-              <Link to={trackPath(track.slug)} className={`${cardClass} block hover:border-moss`}>
-                <h2 className="font-serif text-2xl">{track.title}</h2>
-                <p className="mt-2 text-muted">{track.summary}</p>
-                <p className="mt-4 text-sm text-moss">{stepCount(track.lessons.length)}</p>
+              <Link to={trackPath(track.slug)} className={cardClass}>
+                <h2 className="text-2xl font-bold">{track.title}</h2>
+                <p className="mt-2 text-stone-700">{track.summary}</p>
+                <p className="mt-4 text-sm font-semibold text-indigo-700">{stepCount(track.lessons.length)}</p>
               </Link>
             </li>
           ))}

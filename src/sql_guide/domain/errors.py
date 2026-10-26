@@ -43,3 +43,23 @@ class SandboxQueryFailed(DomainError):
 
 class SandboxSetupFailed(DomainError):
     """Raised when trusted setup SQL cannot be applied."""
+
+
+class InvalidLessonKey(DomainError):
+    """Raised when a track or lesson slug cannot be stored."""
+
+
+class InvalidModelChoice(DomainError):
+    """Raised when the provider and model are not in the catalog."""
+
+
+class InvalidModelKey(DomainError):
+    """Raised when an API key is missing or not a token."""
+
+
+class ModelKeyUnreadable(DomainError):
+    """Raised when a stored API key cannot be decrypted."""
+
+
+class ModelCheckFailed(DomainError):
+    """Raised when the provider rejects the key or cannot be reached."""

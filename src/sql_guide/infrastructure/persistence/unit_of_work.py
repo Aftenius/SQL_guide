@@ -6,13 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from sql_guide.domain.ports import (
     ExternalIdentityRepository,
+    LearnerModelRepository,
     LearnerProfileRepository,
+    PracticeRepository,
     RefreshTokenRepository,
     UserRepository,
 )
 from sql_guide.infrastructure.persistence.repositories import (
     SqlExternalIdentityRepository,
+    SqlLearnerModelRepository,
     SqlLearnerProfileRepository,
+    SqlPracticeRepository,
     SqlRefreshTokenRepository,
     SqlUserRepository,
 )
@@ -36,6 +40,10 @@ class SqlAlchemyUnitOfWork:
             self._session
         )
         self.identities: ExternalIdentityRepository = SqlExternalIdentityRepository(
+            self._session
+        )
+        self.practice: PracticeRepository = SqlPracticeRepository(self._session)
+        self.learner_models: LearnerModelRepository = SqlLearnerModelRepository(
             self._session
         )
 

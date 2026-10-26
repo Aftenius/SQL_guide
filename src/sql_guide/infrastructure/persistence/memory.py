@@ -1,18 +1,23 @@
 """In-memory unit of work used by application tests."""
 
 import copy
+from datetime import date
 from typing import Self
 from uuid import UUID
 
 from sql_guide.domain.errors import EmailAlreadyRegistered, YandexSignInFailed
 from sql_guide.domain.external import ExternalIdentity
 from sql_guide.domain.learner import LearnerProfile
+from sql_guide.domain.learner_model import LearnerModel
 from sql_guide.domain.ports import (
     ExternalIdentityRepository,
+    LearnerModelRepository,
     LearnerProfileRepository,
+    PracticeRepository,
     RefreshTokenRepository,
     UserRepository,
 )
+from sql_guide.domain.practice import ReviewCard, SolvedDay
 from sql_guide.domain.session import StoredRefreshToken
 from sql_guide.domain.user import Email, User, UserId
 
@@ -26,6 +31,9 @@ class MemoryStore:
         self.profiles: dict[UUID, LearnerProfile] = {}
         self.refresh_tokens: dict[str, StoredRefreshToken] = {}
         self.identities: dict[tuple[str, str], ExternalIdentity] = {}
+        self.cards: dict[tuple[UUID, str, str], ReviewCard] = {}
+        self.days: dict[tuple[UUID, date], int] = {}
+        self.learner_models: dict[UUID, LearnerModel] = {}
 
 
 class InMemoryUserRepository:
@@ -105,6 +113,65 @@ class InMemoryExternalIdentityRepository:
         return self._store.identities.get((provider, subject))
 
 
+class InMemoryPracticeRepository:
+    """Practice repository over a memory store."""
+
+    def __init__(self, store: MemoryStore) -> None:
+        self._store = store
+
+    async def get_card(
+        self,
+        user_id: UserId,
+        track: str,
+        lesson: str,
+    ) -> ReviewCard | None:
+        """Return the card for one step."""
+        return self._store.cards.get((user_id.value, track, lesson))
+
+    async def save_card(self, card: ReviewCard) -> None:
+        """Insert or replace the card for one step."""
+        key = (card.user_id.value, card.track, card.lesson)
+        self._store.cards[key] = card
+
+    async def list_cards(self, user_id: UserId) -> list[ReviewCard]:
+        """Return every review card, earliest due date first."""
+        cards = [card for card in self._store.cards.values() if card.user_id == user_id]
+        return sorted(cards, key=lambda card: (card.due_on, card.lesson))
+
+    async def solved_days(self, user_id: UserId) -> list[SolvedDay]:
+        """Return every day that contains at least one solve."""
+        days = [
+            SolvedDay(on=day, solved=count)
+            for (owner, day), count in self._store.days.items()
+            if owner == user_id.value
+        ]
+        return sorted(days, key=lambda day: day.on)
+
+    async def add_solve(self, user_id: UserId, on: date) -> None:
+        """Count one more solved step on a practice day."""
+        key = (user_id.value, on)
+        self._store.days[key] = self._store.days.get(key, 0) + 1
+
+
+class InMemoryLearnerModelRepository:
+    """Model-key repository over a memory store."""
+
+    def __init__(self, store: MemoryStore) -> None:
+        self._store = store
+
+    async def get(self, user_id: UserId) -> LearnerModel | None:
+        """Return the saved model for an account."""
+        return self._store.learner_models.get(user_id.value)
+
+    async def save(self, model: LearnerModel) -> None:
+        """Insert or replace the saved model."""
+        self._store.learner_models[model.user_id.value] = model
+
+    async def delete(self, user_id: UserId) -> None:
+        """Remove the saved model when it exists."""
+        self._store.learner_models.pop(user_id.value, None)
+
+
 class InMemoryUnitOfWork:
     """Transaction over a memory store, restored when the body fails."""
 
@@ -122,6 +189,10 @@ class InMemoryUnitOfWork:
         )
         identities = InMemoryExternalIdentityRepository(store)
         self.identities: ExternalIdentityRepository = identities
+        self.practice: PracticeRepository = InMemoryPracticeRepository(store)
+        self.learner_models: LearnerModelRepository = InMemoryLearnerModelRepository(
+            store
+        )
         self._snapshot = copy.deepcopy(store)
 
     async def __aenter__(self) -> Self:
@@ -155,6 +226,12 @@ class InMemoryUnitOfWork:
             self._store.refresh_tokens.update(self._snapshot.refresh_tokens)
             self._store.identities.clear()
             self._store.identities.update(self._snapshot.identities)
+            self._store.cards.clear()
+            self._store.cards.update(self._snapshot.cards)
+            self._store.days.clear()
+            self._store.days.update(self._snapshot.days)
+            self._store.learner_models.clear()
+            self._store.learner_models.update(self._snapshot.learner_models)
 
     async def commit(self) -> None:
         """Keep the current memory state."""

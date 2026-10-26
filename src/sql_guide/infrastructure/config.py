@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         yandex_redirect_uri: Callback URL registered in Yandex.
         frontend_origin: Browser origin allowed to call the API.
         sandbox_database_url: Database where learner SQL is executed.
+        model_secret: Secret that encrypts learner model keys. Empty uses jwt_secret.
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -41,6 +42,15 @@ class Settings(BaseSettings):
     sandbox_database_url: str = (
         "postgresql://sql_guide:sql_guide@127.0.0.1:5433/sql_guide_sandbox"
     )
+    model_secret: str = ""
+
+    def model_key_secret(self) -> str:
+        """Return the secret that encrypts learner model keys.
+
+        Returns:
+            ``model_secret`` when it is set, otherwise the JWT secret.
+        """
+        return self.model_secret or self.jwt_secret
 
 
 @lru_cache(maxsize=1)

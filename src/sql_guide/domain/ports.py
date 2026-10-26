@@ -1,12 +1,14 @@
 """Ports that infrastructure implements for identity and progress."""
 
-from datetime import datetime
+from datetime import date, datetime
 from types import TracebackType
 from typing import Protocol
 from uuid import UUID
 
 from sql_guide.domain.external import ExternalIdentity
 from sql_guide.domain.learner import LearnerProfile
+from sql_guide.domain.learner_model import LearnerModel
+from sql_guide.domain.practice import ReviewCard, SolvedDay
 from sql_guide.domain.session import StoredRefreshToken
 from sql_guide.domain.user import Email, User, UserId
 
@@ -111,6 +113,79 @@ class RefreshTokenRepository(Protocol):
         ...
 
 
+class PracticeRepository(Protocol):
+    """Persistence for solved days and review cards."""
+
+    async def get_card(
+        self,
+        user_id: UserId,
+        track: str,
+        lesson: str,
+    ) -> ReviewCard | None:
+        """Return the card for one step, if the learner has solved it."""
+        ...
+
+    async def save_card(self, card: ReviewCard) -> None:
+        """Insert or replace the card for one step."""
+        ...
+
+    async def list_cards(self, user_id: UserId) -> list[ReviewCard]:
+        """Return every review card for an account, earliest due date first."""
+        ...
+
+    async def solved_days(self, user_id: UserId) -> list[SolvedDay]:
+        """Return every day that contains at least one solve."""
+        ...
+
+    async def add_solve(self, user_id: UserId, on: date) -> None:
+        """Count one more solved step on a practice day."""
+        ...
+
+
+class LearnerModelRepository(Protocol):
+    """Persistence for one encrypted model key per account."""
+
+    async def get(self, user_id: UserId) -> LearnerModel | None:
+        """Return the saved model, if the account has one."""
+        ...
+
+    async def save(self, model: LearnerModel) -> None:
+        """Insert or replace the saved model."""
+        ...
+
+    async def delete(self, user_id: UserId) -> None:
+        """Remove the saved model. A missing row is ignored."""
+        ...
+
+
+class ModelKeyCipher(Protocol):
+    """Encryption for learner API keys."""
+
+    def encrypt(self, secret: str) -> str:
+        """Encrypt an API key for storage."""
+        ...
+
+    def decrypt(self, ciphertext: str) -> str:
+        """Decrypt a stored API key.
+
+        Raises:
+            ModelKeyUnreadable: The ciphertext does not match the process secret.
+        """
+        ...
+
+
+class ModelProbe(Protocol):
+    """A check that the provider accepts a key. The key is not logged."""
+
+    async def check(self, *, base_url: str, api_key: str, model: str) -> None:
+        """Confirm the provider accepts the key for the model.
+
+        Raises:
+            ModelCheckFailed: The provider rejected the key or did not answer.
+        """
+        ...
+
+
 class ExternalIdentityRepository(Protocol):
     """Persistence for provider sign-ins."""
 
@@ -130,6 +205,8 @@ class UnitOfWork(Protocol):
     profiles: LearnerProfileRepository
     refresh_tokens: RefreshTokenRepository
     identities: ExternalIdentityRepository
+    practice: PracticeRepository
+    learner_models: LearnerModelRepository
 
     async def commit(self) -> None:
         """Make the transaction durable."""

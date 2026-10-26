@@ -8,8 +8,8 @@ export function NotFoundPage() {
 
   return (
     <section>
-      <h1 className="font-serif text-4xl">Такой страницы нет</h1>
-      <p className="mt-3 text-muted">Адрес не совпадает ни с одним шагом курса.</p>
+      <h1 className="text-4xl font-bold">Такой страницы нет</h1>
+      <p className="mt-3 text-base text-stone-600">Адрес не совпадает ни с одним шагом курса.</p>
       <Link to="/learn" className={`${buttonQuietClass} mt-6`}>
         Ко всем разделам
       </Link>

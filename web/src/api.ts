@@ -27,6 +27,11 @@ const detailText: Record<string, string> = {
   "Invalid or expired session": "Сессия истекла. Войдите ещё раз.",
   "Yandex sign-in could not be confirmed": "Яндекс не подтвердил вход. Начните ещё раз.",
   "Yandex sign-in failed": "Яндекс не завершил вход.",
+  "Lesson key is invalid": "Такого шага нет.",
+  "Model choice is invalid": "Такой модели в списке нет.",
+  "API key is invalid": "Ключ должен начинаться с sk- и быть длиннее.",
+  "Saved API key cannot be read": "Сохранённый ключ не читается. Введите его ещё раз.",
+  "Model API rejected the key": "Модель не приняла ключ. Проверьте его и попробуйте ещё раз.",
 };
 
 let accessToken: string | null = null;
@@ -86,6 +91,83 @@ export async function logoutAccount(): Promise<void> {
 
 export async function currentLearner(): Promise<Learner> {
   return request("/me", learnerSchema);
+}
+
+const practiceCalendarSchema = z.object({
+  today: z.string(),
+  streak: z.number().int(),
+  days: z.array(z.object({ date: z.string(), solved: z.number().int() })),
+  reviews: z.array(
+    z.object({
+      track: z.string(),
+      lesson: z.string(),
+      due_on: z.string(),
+      interval_days: z.number().int(),
+    }),
+  ),
+});
+
+const solveResultSchema = z.object({
+  track: z.string(),
+  lesson: z.string(),
+  due_on: z.string(),
+  interval_days: z.number().int(),
+  counted: z.boolean(),
+  today: z.string(),
+});
+
+export type PracticeCalendar = z.infer<typeof practiceCalendarSchema>;
+export type SolveResult = z.infer<typeof solveResultSchema>;
+
+export async function loadPractice(): Promise<PracticeCalendar> {
+  return request("/me/practice", practiceCalendarSchema);
+}
+
+const learnerModelSchema = z.object({
+  configured: z.boolean(),
+  provider: z.string().optional(),
+  model: z.string().optional(),
+  hint: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type LearnerModel = z.infer<typeof learnerModelSchema>;
+
+export async function loadLearnerModel(): Promise<LearnerModel> {
+  return request("/me/model", learnerModelSchema);
+}
+
+export async function saveLearnerModel(
+  provider: string,
+  model: string,
+  apiKey: string,
+): Promise<LearnerModel> {
+  return request("/me/model", learnerModelSchema, {
+    method: "PUT",
+    body: JSON.stringify({ provider, model, api_key: apiKey }),
+  });
+}
+
+export async function clearLearnerModel(): Promise<void> {
+  await request("/me/model", z.null(), { method: "DELETE" });
+}
+
+export async function checkLearnerModel(
+  provider: string,
+  model: string,
+  apiKey: string,
+): Promise<void> {
+  await request("/me/model/check", z.null(), {
+    method: "POST",
+    body: JSON.stringify({ provider, model, api_key: apiKey }),
+  });
+}
+
+export async function recordSolve(track: string, lesson: string): Promise<SolveResult> {
+  return request("/me/practice", solveResultSchema, {
+    method: "POST",
+    body: JSON.stringify({ track, lesson }),
+  });
 }
 
 export async function yandexStart(): Promise<string> {
