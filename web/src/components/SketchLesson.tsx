@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eraser } from "lucide-react";
+import { Check, Eraser } from "lucide-react";
 import { useRef, useState, type KeyboardEvent, type UIEvent } from "react";
 import { Link } from "react-router";
 
 import { ApiError, recordSolve, runQuery, type QueryResult } from "../api";
 import { highlightSql, type SqlTokenKind } from "../highlightSql";
 import { type LessonBody, type LessonTable } from "../lessonBodies";
-import { lessonTasks, taskTables } from "../lessonTasks";
+import { advanceSolved, lessonTasks, nextOpenTask, taskTables } from "../lessonTasks";
 import { formatPracticeDate } from "../practiceCalendar";
 import { practiceDatabaseId } from "../practiceDatabases";
 import { useSession } from "../session";
@@ -36,9 +36,18 @@ export function SketchLesson({
 }) {
   const tasks = lessonTasks(track, lesson);
   const tables = taskTables(track, lesson);
+  const lessonId = `${track}/${lesson}`;
   const [query, setQuery] = useState("");
   const [pendingQuery, setPendingQuery] = useState(false);
   const [outcome, setOutcome] = useState<QueryOutcome | null>(null);
+  const [solvedLesson, setSolvedLesson] = useState(lessonId);
+  const [solved, setSolved] = useState<number[]>([]);
+  if (solvedLesson !== lessonId) {
+    setSolvedLesson(lessonId);
+    setSolved([]);
+    setOutcome(null);
+    setQuery("");
+  }
   const session = useSession();
   const client = useQueryClient();
   const solve = useMutation({
@@ -55,8 +64,17 @@ export function SketchLesson({
     }
     setPendingQuery(true);
     try {
-      const result = await runQuery(practiceDatabaseId(track, lesson), query);
+      const result = await runQuery(
+        practiceDatabaseId(track, lesson),
+        query,
+        tasks.map((task) => ({
+          sql: task.solution ?? "",
+          ordered: Boolean(task.ordered),
+          probe: task.probe ?? "",
+        })),
+      );
       setOutcome({ kind: "rows", result });
+      setSolved((current) => advanceSolved(current, result.passed, tasks));
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Запрос не выполнился.";
       setOutcome({ kind: "error", message });
@@ -140,12 +158,23 @@ export function SketchLesson({
             <aside className="border-t-2 border-dashed border-stone-300 pt-3 lg:border-t-0 lg:border-l-2 lg:pt-0 lg:pl-4">
               <h2 className="text-sm font-bold">Задачи</h2>
               <ol className="mt-3 grid gap-3">
-                {tasks.map((task, index) => (
-                  <li key={task.prompt} className="flex gap-2 text-sm leading-relaxed">
-                    <span className="font-semibold text-indigo-700">{index + 1}</span>
-                    <span>{task.prompt}</span>
-                  </li>
-                ))}
+                {tasks.map((task, index) => {
+                  const locked = index > nextOpenTask(solved, tasks);
+                  return (
+                    <li
+                      key={task.prompt}
+                      className={`flex items-start gap-2 text-sm leading-relaxed ${locked ? "text-stone-400" : ""}`}
+                    >
+                      <span className={`font-semibold ${locked ? "text-stone-400" : "text-indigo-700"}`}>
+                        {index + 1}
+                      </span>
+                      <span className="flex-1">{task.prompt}</span>
+                      {solved.includes(index) ? (
+                        <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-label="Выполнено" />
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ol>
             </aside>
           ) : null}

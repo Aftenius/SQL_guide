@@ -171,9 +171,15 @@ def build_test_container() -> AppContainer:
 class _QuietSandbox:
     """Sandbox double that returns no rows. Tests that need rows bring their own."""
 
-    async def execute(self, setup: object, statement: str) -> QueryResult:
+    async def execute(
+        self,
+        setup: object,
+        statement: str,
+        *,
+        probe: str | None = None,
+    ) -> QueryResult:
         """Ignore the statement and return an empty result."""
-        del setup, statement
+        del setup, statement, probe
         return QueryResult((), ())
 
 

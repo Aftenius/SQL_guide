@@ -43,15 +43,22 @@ class PostgresSandbox:
         self._url = psycopg_url(database_url)
         self._role = role
 
-    async def execute(self, setup: Sequence[str], statement: str) -> QueryResult:
+    async def execute(
+        self,
+        setup: Sequence[str],
+        statement: str,
+        *,
+        probe: str | None = None,
+    ) -> QueryResult:
         """Run setup and one statement, then roll the schema back.
 
         Args:
             setup: Trusted statements executed before the role switch.
             statement: Learner statement already accepted by the policy.
+            probe: Optional statement whose rows are returned after ``statement``.
 
         Returns:
-            Columns and rows from the learner statement.
+            Columns and rows from the learner statement, or from the probe.
 
         Raises:
             SandboxSetupFailed: Setup SQL or the sandbox connection failed.
@@ -60,7 +67,7 @@ class PostgresSandbox:
         schema = f"attempt_{uuid4().hex}"
         connection = await psycopg.AsyncConnection.connect(self._url)
         try:
-            result = await self._run(connection, schema, setup, statement)
+            result = await self._run(connection, schema, setup, statement, probe)
         finally:
             await connection.rollback()
             await connection.close()
@@ -72,6 +79,7 @@ class PostgresSandbox:
         schema: str,
         setup: Sequence[str],
         statement: str,
+        probe: str | None,
     ) -> QueryResult:
         await _owner(
             connection,
@@ -99,7 +107,10 @@ class PostgresSandbox:
             connection,
             sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(self._role)),
         )
-        return await _learner(connection, statement)
+        if probe is None:
+            return await _learner(connection, statement)
+        await _learner(connection, statement)
+        return await _learner(connection, probe)
 
 
 async def ensure_sandbox(admin_url: str) -> None:

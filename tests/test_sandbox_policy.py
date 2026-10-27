@@ -16,9 +16,15 @@ class RecordingSandbox:
         self.calls = 0
         self._result = result
 
-    async def execute(self, setup: Sequence[str], statement: str) -> QueryResult:
+    async def execute(
+        self,
+        setup: Sequence[str],
+        statement: str,
+        *,
+        probe: str | None = None,
+    ) -> QueryResult:
         """Return the prepared result and count the call."""
-        del setup, statement
+        del setup, statement, probe
         self.calls += 1
         return self._result
 

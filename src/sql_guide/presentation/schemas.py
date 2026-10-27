@@ -100,11 +100,20 @@ class CheckLearnerModelRequest(BaseModel):
     api_key: str = ""
 
 
+class QueryCheck(BaseModel):
+    """Hidden solution for one task. An empty statement is not graded."""
+
+    sql: str = ""
+    ordered: bool = False
+    probe: str = ""
+
+
 class QueryRequest(BaseModel):
     """Learner statement and the practice database it should see."""
 
     database: str
     sql: str
+    checks: list[QueryCheck] = []
 
 
 class QueryResponse(BaseModel):
@@ -112,6 +121,7 @@ class QueryResponse(BaseModel):
 
     columns: list[str]
     rows: list[list[str | int | float | bool | None]]
+    passed: list[int]
 
 
 class PracticeCalendarResponse(BaseModel):

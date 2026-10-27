@@ -64,15 +64,23 @@ class QueryResult:
 class SqlSandbox(Protocol):
     """Runs trusted setup and one learner statement in an isolated schema."""
 
-    async def execute(self, setup: Sequence[str], statement: str) -> QueryResult:
+    async def execute(
+        self,
+        setup: Sequence[str],
+        statement: str,
+        *,
+        probe: str | None = None,
+    ) -> QueryResult:
         """Apply setup, run the statement, and discard the schema.
 
         Args:
             setup: Trusted statements that create the exercise data.
             statement: One learner statement already accepted by the policy.
+            probe: When set, a second statement whose rows are returned instead.
+                The first statement still runs, so a change can be read back.
 
         Returns:
-            The rows the learner statement produced.
+            The rows the learner statement produced, or the probe rows.
         """
         ...
 

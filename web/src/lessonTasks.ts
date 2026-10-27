@@ -5,6 +5,15 @@ import { practiceDatabase, type PracticeTable } from "./practiceDatabases";
 export type LessonTask = {
   prompt: string;
   tables: string[];
+  solution?: string;
+  ordered?: boolean;
+  probe?: string;
+};
+
+type TaskSolution = {
+  sql: string;
+  ordered?: boolean;
+  probe?: string;
 };
 
 function same(tables: string[], prompts: string[]): LessonTask[] {
@@ -60,7 +69,7 @@ const tasks: Record<string, LessonTask[]> = {
   "tutorial/expressions": same(["books"], [
     "Покажите title и pages / 100.0 под именем hundreds.",
     "Покажите title и price * 1.1 под именем with_tax.",
-    "Пометьте книгу короче 100 страниц как «тонкая», остальные как «обычная».",
+    "Пометьте книгу короче 100 страниц как «тонкая», остальные как «обычная». Имя столбца — kind.",
   ]),
   "tutorial/aggregates": same(["orders"], [
     "Посчитайте сумму copies.",
@@ -80,7 +89,7 @@ const tasks: Record<string, LessonTask[]> = {
   "tutorial/insert": same(["books"], [
     "Добавьте книгу «Запад», 2024 год, 210 страниц, цена 300, isbn 978-5-0004.",
     "Добавьте книгу «Север. Том 2» с тем же годом и ценой, что у «Север». Страниц 100, isbn 978-5-0005.",
-    "Добавьте строку и сразу верните её id.",
+    "Добавьте строку с id = 4 и сразу верните её id.",
   ]),
   "tutorial/update": same(["books"], [
     "Поставьте книге «Юг» 200 страниц.",
@@ -184,8 +193,260 @@ const tasks: Record<string, LessonTask[]> = {
   ]),
 };
 
+const books = "id, title, year, pages, price, isbn";
+const allBooks = `SELECT ${books} FROM books`;
+
+const solutions: Record<string, Array<TaskSolution | null>> = {
+  "tutorial/introduction": [
+    { sql: allBooks },
+    { sql: "SELECT title FROM books" },
+    { sql: "SELECT title, pages FROM books" },
+  ],
+  "tutorial/select": [
+    { sql: "SELECT title, year FROM books" },
+    { sql: `${allBooks} WHERE id = 2` },
+    { sql: "SELECT title FROM books" },
+  ],
+  "tutorial/where": [
+    { sql: `${allBooks} WHERE pages > 100` },
+    { sql: `${allBooks} WHERE year = 2019` },
+    { sql: `${allBooks} WHERE title = 'Юг'` },
+  ],
+  "tutorial/where-logic": [
+    { sql: `${allBooks} WHERE year = 2019 AND pages > 100` },
+    { sql: `${allBooks} WHERE year = 2019 OR year = 2021` },
+    { sql: `${allBooks} WHERE pages < 100 OR year > 2020` },
+  ],
+  "tutorial/filter-sort": [
+    { sql: "SELECT DISTINCT year FROM books" },
+    { sql: "SELECT title FROM books ORDER BY pages DESC", ordered: true },
+    { sql: `${allBooks} ORDER BY pages LIMIT 2`, ordered: true },
+  ],
+  "tutorial/review": [
+    { sql: "SELECT title FROM books WHERE year = 2019 ORDER BY pages LIMIT 1", ordered: true },
+    { sql: `${allBooks} WHERE year > 2019 ORDER BY price DESC`, ordered: true },
+    { sql: "SELECT title, price FROM books WHERE price < 400" },
+  ],
+  "tutorial/inner-join": [
+    { sql: "SELECT orders.city, books.title FROM orders INNER JOIN books ON orders.book_id = books.id" },
+    {
+      sql: "SELECT orders.city, books.title FROM orders INNER JOIN books ON orders.book_id = books.id WHERE books.title = 'Север'",
+    },
+    {
+      sql: "SELECT books.title, COUNT(*) FROM books INNER JOIN orders ON orders.book_id = books.id GROUP BY books.title",
+    },
+  ],
+  "tutorial/outer-join": [
+    { sql: "SELECT books.title, orders.city FROM books LEFT JOIN orders ON orders.book_id = books.id" },
+    {
+      sql: `SELECT books.${books.replaceAll(", ", ", books.")} FROM books LEFT JOIN orders ON orders.book_id = books.id WHERE orders.id IS NULL`,
+    },
+    { sql: "SELECT orders.id, books.title FROM orders LEFT JOIN books ON orders.book_id = books.id" },
+  ],
+  "tutorial/nulls": [
+    { sql: "SELECT id, book_id FROM orders WHERE book_id IS NULL" },
+    { sql: "SELECT id, city FROM orders WHERE city IS NULL" },
+    { sql: "SELECT id, city FROM orders WHERE city IS NOT NULL" },
+  ],
+  "tutorial/expressions": [
+    { sql: "SELECT title, pages / 100.0 AS hundreds FROM books" },
+    { sql: "SELECT title, price * 1.1 AS with_tax FROM books" },
+    { sql: "SELECT title, CASE WHEN pages < 100 THEN 'тонкая' ELSE 'обычная' END AS kind FROM books" },
+  ],
+  "tutorial/aggregates": [
+    { sql: "SELECT SUM(copies) FROM orders" },
+    { sql: "SELECT COUNT(*) FROM orders" },
+    { sql: "SELECT AVG(copies) FROM orders" },
+  ],
+  "tutorial/group-by": [
+    { sql: "SELECT city, SUM(copies) FROM orders GROUP BY city" },
+    { sql: "SELECT city, COUNT(*) FROM orders GROUP BY city" },
+    { sql: "SELECT city, SUM(copies) FROM orders GROUP BY city HAVING SUM(copies) > 2" },
+  ],
+  "tutorial/execution-order": [
+    { sql: "SELECT title, pages FROM books WHERE year = 2019 ORDER BY pages", ordered: true },
+    { sql: "SELECT city, SUM(copies) FROM orders GROUP BY city HAVING SUM(copies) > 2" },
+    { sql: "SELECT title, price AS cost FROM books ORDER BY cost", ordered: true },
+  ],
+  "tutorial/insert": [
+    {
+      sql: "INSERT INTO books (id, title, year, pages, price, isbn) VALUES (4, 'Запад', 2024, 210, 300, '978-5-0004')",
+      probe: "SELECT title, year, pages, price, isbn FROM books",
+    },
+    {
+      sql: "INSERT INTO books (id, title, year, pages, price, isbn) VALUES (4, 'Север. Том 2', 2019, 100, 400, '978-5-0005')",
+      probe: "SELECT title, year, pages, price, isbn FROM books",
+    },
+    {
+      sql: "INSERT INTO books (id, title, year, pages, price, isbn) VALUES (4, 'Запад', 2024, 210, 300, '978-5-0004') RETURNING id",
+    },
+  ],
+  "tutorial/update": [
+    {
+      sql: "UPDATE books SET pages = 200 WHERE title = 'Юг'",
+      probe: "SELECT title, pages FROM books",
+    },
+    {
+      sql: "UPDATE books SET price = 450 WHERE title = 'Север'",
+      probe: "SELECT title, price FROM books",
+    },
+    {
+      sql: "UPDATE books SET year = 2020 WHERE title = 'Восток'",
+      probe: "SELECT title, year FROM books",
+    },
+  ],
+  "tutorial/delete": [
+    { sql: "DELETE FROM books WHERE id = 3", probe: "SELECT id FROM books" },
+    { sql: "DELETE FROM books WHERE pages < 100", probe: "SELECT id FROM books" },
+    { sql: "DELETE FROM books WHERE id = 2", probe: "SELECT id FROM books" },
+  ],
+  "tutorial/create-table": [
+    {
+      sql: "CREATE TABLE readers (id integer PRIMARY KEY, name text NOT NULL, city text)",
+      ordered: true,
+      probe:
+        "SELECT column_name, is_nullable FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'readers' ORDER BY ordinal_position",
+    },
+    {
+      sql: "CREATE TABLE shelves (id integer PRIMARY KEY, code text NOT NULL UNIQUE)",
+      ordered: true,
+      probe:
+        "SELECT column_name, is_nullable FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'shelves' ORDER BY ordinal_position",
+    },
+    {
+      sql: "CREATE TABLE loans (id integer PRIMARY KEY, reader_id integer NOT NULL, copy_id integer NOT NULL)",
+      ordered: true,
+      probe:
+        "SELECT column_name, is_nullable FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'loans' ORDER BY ordinal_position",
+    },
+  ],
+  "tutorial/alter-table": [
+    {
+      sql: "ALTER TABLE books ADD COLUMN city text",
+      probe:
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'books' AND column_name = 'city'",
+    },
+    {
+      sql: "ALTER TABLE books ADD COLUMN reprint_year integer",
+      probe:
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'books' AND column_name = 'reprint_year'",
+    },
+    null,
+  ],
+  "patterns/row-multiplication": [
+    { sql: "SELECT books.title FROM books JOIN orders ON orders.book_id = books.id WHERE books.title = 'Север'" },
+    { sql: "SELECT SUM(books.price) FROM books JOIN orders ON orders.book_id = books.id" },
+    {
+      sql: "SELECT books.title, books.price, COUNT(orders.id) FROM books JOIN orders ON orders.book_id = books.id GROUP BY books.id, books.title, books.price",
+    },
+  ],
+  "patterns/select-star": [
+    { sql: "SELECT title, year FROM books" },
+    { sql: "SELECT title, price, isbn FROM books" },
+    null,
+  ],
+  "patterns/nullable-surprise": [
+    { sql: "SELECT name FROM readers WHERE city <> 'Казань'" },
+    { sql: "SELECT name FROM readers WHERE city <> 'Казань' OR city IS NULL" },
+    { sql: "SELECT name FROM readers WHERE city IS NULL" },
+  ],
+  "patterns/filter-before-join": [
+    {
+      sql: "SELECT orders.id, books.title FROM orders JOIN books ON orders.book_id = books.id WHERE orders.city = 'Казань'",
+    },
+    {
+      sql: "SELECT books.title FROM books JOIN orders ON orders.book_id = books.id WHERE orders.city = 'Пермь'",
+    },
+    {
+      sql: "SELECT books.title, orders.city FROM books LEFT JOIN orders ON orders.book_id = books.id AND orders.city = 'Казань'",
+    },
+  ],
+  "patterns/aggregate-before-join": [
+    { sql: "SELECT book_id, SUM(copies) FROM orders GROUP BY book_id" },
+    {
+      sql: "SELECT books.title, sums.copies FROM books JOIN (SELECT book_id, SUM(copies) AS copies FROM orders GROUP BY book_id) AS sums ON sums.book_id = books.id",
+    },
+    {
+      sql: "SELECT books.title, books.price, sums.copies FROM books JOIN (SELECT book_id, SUM(copies) AS copies FROM orders GROUP BY book_id) AS sums ON sums.book_id = books.id",
+    },
+  ],
+  "patterns/readable-query": [
+    { sql: "WITH y2019 AS (SELECT title FROM books WHERE year = 2019) SELECT title FROM y2019" },
+    {
+      sql: "WITH y2019 AS (SELECT title, pages FROM books WHERE year = 2019) SELECT title FROM y2019 WHERE pages > 100",
+    },
+    { sql: "WITH costs AS (SELECT title, price / pages AS cost FROM books) SELECT title, cost FROM costs" },
+  ],
+  "patterns/one-query": [
+    {
+      sql: "SELECT employees.name, departments.name FROM employees JOIN departments ON employees.department_id = departments.id",
+    },
+    {
+      sql: "SELECT employees.name, departments.name FROM employees LEFT JOIN departments ON employees.department_id = departments.id",
+    },
+    {
+      sql: "SELECT departments.name, COUNT(employees.id) FROM departments LEFT JOIN employees ON employees.department_id = departments.id GROUP BY departments.name",
+    },
+  ],
+  "patterns/stable-keys": [{ sql: "SELECT id, isbn FROM books" }, null, null],
+  "patterns/foreign-keys": [
+    {
+      sql: "SELECT id FROM orders WHERE book_id IS NULL OR NOT EXISTS (SELECT 1 FROM books WHERE books.id = orders.book_id)",
+    },
+    null,
+    null,
+  ],
+  "patterns/normalize-then-copy": [
+    { sql: "SELECT orders.id, books.price FROM orders JOIN books ON orders.book_id = books.id" },
+    null,
+    null,
+  ],
+  "patterns/index-for-query": [
+    {
+      sql: "SELECT id FROM orders WHERE city = 'Казань' AND created_at = DATE '2026-10-26' ORDER BY created_at DESC",
+      ordered: true,
+    },
+    null,
+    null,
+  ],
+  "patterns/split-when-large": [
+    { sql: "SELECT to_char(created_at, 'YYYY-MM') AS month, COUNT(*) FROM orders GROUP BY 1" },
+    null,
+    null,
+  ],
+  "patterns/reads-aside": [
+    { sql: "SELECT COUNT(*) FROM orders WHERE created_at = DATE '2026-10-26'" },
+    { sql: "SELECT id, book_id, city, copies, created_at FROM orders WHERE id = 3" },
+    null,
+  ],
+};
+
 export function lessonTasks(track: string, lesson: string): LessonTask[] {
-  return tasks[`${track}/${lesson}`] ?? [];
+  const key = `${track}/${lesson}`;
+  const lessonSolutions = solutions[key] ?? [];
+  return (tasks[key] ?? []).map((task, index) => {
+    const solution = lessonSolutions[index];
+    if (!solution) return task;
+    return { ...task, solution: solution.sql, ordered: solution.ordered, probe: solution.probe };
+  });
+}
+
+export function nextOpenTask(solved: readonly number[], items: readonly LessonTask[]): number {
+  for (let index = 0; index < items.length; index += 1) {
+    if (!items[index]?.solution || solved.includes(index)) continue;
+    return index;
+  }
+  return items.length;
+}
+
+export function advanceSolved(
+  solved: readonly number[],
+  passed: readonly number[],
+  items: readonly LessonTask[],
+): number[] {
+  const next = nextOpenTask(solved, items);
+  if (!passed.includes(next)) return [...solved];
+  return [...solved, next];
 }
 
 export function taskTables(track: string, lesson: string): PracticeTable[] {

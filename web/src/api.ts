@@ -168,14 +168,25 @@ export async function checkLearnerModel(
 const queryResultSchema = z.object({
   columns: z.array(z.string()),
   rows: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))),
+  passed: z.array(z.number().int()),
 });
 
 export type QueryResult = z.infer<typeof queryResultSchema>;
 
-export async function runQuery(database: string, sql: string): Promise<QueryResult> {
+export type QueryCheck = {
+  sql: string;
+  ordered: boolean;
+  probe: string;
+};
+
+export async function runQuery(
+  database: string,
+  sql: string,
+  checks: QueryCheck[],
+): Promise<QueryResult> {
   return request("/query", queryResultSchema, {
     method: "POST",
-    body: JSON.stringify({ database, sql }),
+    body: JSON.stringify({ database, sql, checks }),
   });
 }
 

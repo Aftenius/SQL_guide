@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter
 
-from sql_guide.application.run_query import PracticeQuery
+from sql_guide.application.run_query import PracticeQuery, TaskCheck
 from sql_guide.infrastructure.container import AppContainer
 from sql_guide.presentation.schemas import QueryRequest, QueryResponse
 
@@ -27,11 +27,19 @@ def create_query_router(container: AppContainer) -> APIRouter:
     async def run_query(body: QueryRequest) -> QueryResponse:
         """Execute one statement against a practice database."""
         result = await container.run_practice_query.execute(
-            PracticeQuery(database_id=body.database, sql=body.sql)
+            PracticeQuery(
+                database_id=body.database,
+                sql=body.sql,
+                checks=tuple(
+                    TaskCheck(sql=item.sql, ordered=item.ordered, probe=item.probe)
+                    for item in body.checks
+                ),
+            )
         )
         return QueryResponse(
-            columns=list(result.columns),
-            rows=[[_cell(value) for value in row] for row in result.rows],
+            columns=list(result.result.columns),
+            rows=[[_cell(value) for value in row] for row in result.result.rows],
+            passed=list(result.passed),
         )
 
     return router
