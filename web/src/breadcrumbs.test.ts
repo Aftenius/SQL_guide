@@ -8,7 +8,7 @@ describe("breadcrumbItems", () => {
   it("builds the trail from route handles", () => {
     const items = breadcrumbItems([
       { pathname: "/", handle: undefined },
-      { pathname: "/learn", handle: { crumb: "Обучение" } },
+      { pathname: "/learn", handle: undefined },
       { pathname: "/learn/sql", handle: { crumb: "SQL" } },
       {
         pathname: "/learn/sql/select",
@@ -19,9 +19,8 @@ describe("breadcrumbItems", () => {
 
     expect(items.map((item) => item.label)).toEqual([
       "Главная",
-      "Обучение",
       "SQL",
-      "Выборка",
+      "SELECT, фильтрация и сортировка",
     ]);
     expect(items.at(-1)?.href).toBe("/learn/sql/select");
   });
@@ -44,9 +43,12 @@ describe("coursePaths", () => {
   it("gives every lesson its own address", () => {
     const paths = coursePaths();
     expect(new Set(paths).size).toBe(paths.length);
+    expect(paths).toContain("/learn/tutorial/select");
     expect(paths).toContain("/learn/sql/select");
-    expect(paths).toContain("/learn/scaling/sharding");
-    expect(paths).toContain("/learn/architecture/split-brain");
+    expect(paths).toContain("/learn/patterns/stable-keys");
+    expect(paths).toContain("/learn/transactions/isolation");
+    expect(paths).toContain("/learn/planner/explain");
+    expect(paths).toContain("/learn/operations/etl");
   });
 });
 

@@ -17,7 +17,7 @@ services:
   app:
     build: .
     ports:
-      - "1515:1515"
+      - "2515:1515"
     depends_on:
       postgres:
         condition: service_healthy
@@ -25,8 +25,8 @@ services:
       DATABASE_URL: postgresql+psycopg://sql_guide:sql_guide@postgres:5432/sql_guide
       SANDBOX_DATABASE_URL: postgresql://sql_guide:sql_guide@postgres:5432/sql_guide_sandbox
       JWT_SECRET: ${JWT_SECRET:-sql-guide-docker-change-this-secret-key}
-      FRONTEND_ORIGIN: ${PUBLIC_ORIGIN:-http://127.0.0.1:1515}
-      YANDEX_REDIRECT_URI: ${PUBLIC_ORIGIN:-http://127.0.0.1:1515}/login/yandex
+      FRONTEND_ORIGIN: ${PUBLIC_ORIGIN:-http://127.0.0.1:2515}
+      YANDEX_REDIRECT_URI: ${PUBLIC_ORIGIN:-http://127.0.0.1:2515}/login/yandex
       YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
       YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}

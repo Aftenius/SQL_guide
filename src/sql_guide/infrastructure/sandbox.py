@@ -89,17 +89,12 @@ class PostgresSandbox:
             await _setup(connection, item)
         await _owner(
             connection,
-            sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(
+            sql.SQL("GRANT USAGE, CREATE ON SCHEMA {} TO {}").format(
                 sql.Identifier(schema),
                 sql.Identifier(self._role),
             ),
         )
-        await _owner(
-            connection,
-            sql.SQL(
-                "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {} TO {}"
-            ).format(sql.Identifier(schema), sql.Identifier(self._role)),
-        )
+        await _hand_schema_to_learner(connection, schema, self._role)
         await _owner(
             connection,
             sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(self._role)),
@@ -234,6 +229,39 @@ async def _owner(
         await connection.execute(statement)
     except psycopg.Error as exc:
         raise SandboxSetupFailed(_primary(exc)) from exc
+
+
+async def _hand_schema_to_learner(
+    connection: psycopg.AsyncConnection,
+    schema: str,
+    role: str,
+) -> None:
+    """Give the sandbox role the tables of this attempt.
+
+    Args:
+        connection: Open transaction that still runs as the schema owner.
+        schema: Attempt schema created for this statement.
+        role: Login role that will run the learner statement.
+    """
+    cursor = await connection.execute(
+        """
+        SELECT c.relname
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = %s AND c.relkind = 'r'
+        """,
+        (schema,),
+    )
+    names = await cursor.fetchall()
+    for (name,) in names:
+        await _owner(
+            connection,
+            sql.SQL("ALTER TABLE {}.{} OWNER TO {}").format(
+                sql.Identifier(schema),
+                sql.Identifier(name),
+                sql.Identifier(role),
+            ),
+        )
 
 
 async def _setup(connection: psycopg.AsyncConnection, statement: str) -> None:

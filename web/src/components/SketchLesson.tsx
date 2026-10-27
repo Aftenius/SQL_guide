@@ -1,19 +1,23 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, type KeyboardEvent } from "react";
-import { Link, useLocation } from "react-router";
+import { Eraser } from "lucide-react";
+import { useRef, useState, type KeyboardEvent, type UIEvent } from "react";
+import { Link } from "react-router";
 
-import { ApiError, recordSolve } from "../api";
+import { ApiError, recordSolve, runQuery, type QueryResult } from "../api";
+import { highlightSql, type SqlTokenKind } from "../highlightSql";
+import { type LessonBody, type LessonTable } from "../lessonBodies";
+import { lessonTasks, taskTables } from "../lessonTasks";
 import { formatPracticeDate } from "../practiceCalendar";
+import { practiceDatabaseId } from "../practiceDatabases";
 import { useSession } from "../session";
 import { buttonClass, buttonQuietClass } from "./ui";
 import { SchemaCanvas, type SketchMode } from "./SchemaCanvas";
-
-const snippets = ["SELECT ", "WHERE ", "ORDER BY ", "JOIN "];
 
 export function SketchLesson({
   badge,
   title,
   summary,
+  body,
   mode,
   track,
   lesson,
@@ -23,14 +27,18 @@ export function SketchLesson({
   badge: string;
   title: string;
   summary: string;
+  body?: LessonBody;
   mode: SketchMode;
   track: string;
   lesson: string;
   previous?: { href: string; title: string };
   next?: { href: string; title: string };
 }) {
+  const tasks = lessonTasks(track, lesson);
+  const tables = taskTables(track, lesson);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<"idle" | "empty" | "held">("idle");
+  const [pendingQuery, setPendingQuery] = useState(false);
+  const [outcome, setOutcome] = useState<QueryOutcome | null>(null);
   const session = useSession();
   const client = useQueryClient();
   const solve = useMutation({
@@ -40,8 +48,21 @@ export function SketchLesson({
     },
   });
 
-  function run() {
-    setStatus(query.trim() === "" ? "empty" : "held");
+  async function run() {
+    if (query.trim() === "") {
+      setOutcome({ kind: "error", message: "Сначала напишите запрос." });
+      return;
+    }
+    setPendingQuery(true);
+    try {
+      const result = await runQuery(practiceDatabaseId(track, lesson), query);
+      setOutcome({ kind: "rows", result });
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Запрос не выполнился.";
+      setOutcome({ kind: "error", message });
+    } finally {
+      setPendingQuery(false);
+    }
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -52,127 +73,251 @@ export function SketchLesson({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-      <div className="flex flex-col gap-5 lg:col-span-5">
-        <section className="sticky-note relative p-5">
-          <div
-            aria-hidden="true"
-            className="absolute -top-3 left-1/2 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border-2 border-stone-800 bg-red-400 text-[10px] font-bold text-white"
-          >
-            ×
-          </div>
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="sketch-pill bg-amber-300 px-2 py-0.5 text-xs font-bold tracking-wide uppercase">
-              {badge}
-            </span>
-            <span className="text-xs font-medium tracking-wide text-stone-600 uppercase">задание на доске</span>
-          </div>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-stone-800">{summary}</p>
-          <p className="mt-3 bg-amber-100/90 p-2.5 text-xs">
-            <span className="mb-1 block font-bold text-amber-950">На этой доске</span>
-            Запрос сравнится по строкам результата, когда у шага появится набор в песочнице.
-          </p>
-          <SolveStep
-            signedIn={Boolean(session.data)}
-            sessionPending={session.isPending}
-            pending={solve.isPending}
-            error={solve.error}
-            dueOn={solve.data?.due_on}
-            counted={solve.data?.counted}
-            onSolve={() => solve.mutate()}
-          />
-        </section>
-
-        <section className="sketch-box flex flex-1 flex-col bg-white p-4" aria-label="Скетч схемы">
-          <div className="mb-3 flex items-center justify-between border-b-2 border-dashed border-stone-300 pb-2">
-            <h2 className="text-sm font-bold">Скетч схемы</h2>
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">карандашом</span>
-          </div>
-          <div className="relative h-56 overflow-hidden rounded border-2 border-dashed border-stone-400 bg-canvas">
-            <SchemaCanvas mode={mode} />
-          </div>
-        </section>
-      </div>
-
-      <div className="flex flex-col gap-5 lg:col-span-7">
-        <section className="sketch-box bg-white p-5" aria-label="Редактор запроса">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold text-stone-700">SQL запросчик</h2>
-            <button type="button" className="sketch-pill min-h-11 bg-stone-100 px-3 text-xs" onClick={() => setQuery("")}>
-              Очистить
-            </button>
-          </div>
-          <label className="block">
-            <span className="sr-only">Текст запроса</span>
-            <textarea
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={onKeyDown}
-              rows={6}
-              spellCheck={false}
-              placeholder="Введите SELECT"
-              className="w-full border-2 border-stone-800 bg-canvas p-3 font-code text-sm leading-6 text-stone-900"
-            />
-          </label>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {snippets.map((snippet) => (
-                <button
-                  key={snippet}
-                  type="button"
-                  className="sketch-pill min-h-11 bg-stone-100 px-3 font-code text-xs"
-                  onClick={() => setQuery((current) => `${current}${snippet}`)}
-                >
-                  {snippet.trim()}
-                </button>
-              ))}
-            </div>
-            <button type="button" className={buttonClass} onClick={run}>
-              Выполнить запрос
-            </button>
-          </div>
-        </section>
-
-        <section className="sketch-box flex flex-1 flex-col bg-white p-5" aria-live="polite">
-          <div className="mb-3 flex items-center justify-between border-b-2 border-dashed border-stone-300 pb-2">
-            <h2 className="text-sm font-bold">Результат</h2>
-            <span className="sketch-pill bg-stone-200 px-2.5 py-0.5 text-xs">
-              {status === "idle" ? "Ожидание запроса" : status === "empty" ? "Пустой запрос" : "Записан на доске"}
-            </span>
-          </div>
-          {status === "empty" ? (
-            <p className="sketch-box bg-rose-50 p-3 text-sm text-rose-800">Сначала напишите запрос.</p>
-          ) : null}
-          {status === "held" ? (
-            <p className="sketch-box bg-amber-100 p-3 text-sm">
-              Текст запроса сохранён на этой странице. Сравнение строк сделает песочница.
-            </p>
-          ) : null}
-          {status === "idle" ? (
-            <div className="flex min-h-40 items-center justify-center border-2 border-stone-800 bg-canvas p-4 text-center">
-              <p className="text-sm text-stone-500">
-                Нажмите «Выполнить запрос», чтобы оставить его на доске.
+    <div className="flex flex-col gap-3">
+      <section className="sketch-box bg-white p-4" aria-label="Урок">
+        <span className="sketch-pill bg-amber-300 px-2 py-0.5 text-xs font-bold tracking-wide uppercase">
+          {badge}
+        </span>
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <p className="mt-2 text-base leading-relaxed text-stone-800">{summary}</p>
+        {body
+          ? body.paragraphs.map((paragraph) => (
+              <p key={paragraph} className="mt-3 text-base leading-relaxed text-stone-800">
+                {paragraph}
               </p>
+            ))
+          : null}
+        {body?.syntax ? (
+          <pre className="mt-4 w-fit max-w-full overflow-x-auto border-2 border-stone-800 bg-canvas p-3 font-code text-sm leading-6 whitespace-pre">
+            <SqlCode source={body.syntax} />
+          </pre>
+        ) : null}
+        {tables.length > 0 ? (
+          <div className="mt-4 flex flex-wrap items-start gap-4">
+            {tables.map((table) => (
+              <ExampleTable key={table.name} table={table} />
+            ))}
+          </div>
+        ) : tasks.length === 0 ? (
+          <div className="mt-4" aria-label="Скетч схемы">
+            <h2 className="mb-3 text-sm font-bold">Скетч схемы</h2>
+            <div className="relative h-36 overflow-hidden rounded border-2 border-dashed border-stone-400 bg-canvas">
+              <SchemaCanvas mode={mode} />
             </div>
-          ) : null}
-          <nav aria-label="Соседние шаги" className="mt-4 flex flex-wrap gap-3">
-            {previous ? (
-              <Link to={previous.href} className={buttonQuietClass}>
-                {previous.title}
-              </Link>
-            ) : null}
-            {next ? (
-              <Link
-                to={next.href}
-                className="sketch-button inline-flex min-h-11 items-center justify-center bg-emerald-300 px-4 text-sm font-semibold text-pencil"
+          </div>
+        ) : null}
+        <div className={tasks.length > 0 ? "mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : "mt-4"}>
+          <div>
+            <h2 className="mb-2 text-sm font-bold text-stone-700">SQL запросчик</h2>
+            <div className="relative">
+              <SqlField value={query} onChange={setQuery} onKeyDown={onKeyDown} />
+              <button
+                type="button"
+                aria-label="Очистить"
+                className="absolute top-2 right-2 inline-flex size-9 items-center justify-center text-stone-500"
+                onClick={() => setQuery("")}
               >
-                {next.title}
-              </Link>
-            ) : null}
-          </nav>
-        </section>
-      </div>
+                <Eraser aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button type="button" className={buttonClass} disabled={pendingQuery} onClick={() => void run()}>
+                {pendingQuery ? "Выполняется…" : "Выполнить запрос"}
+              </button>
+            </div>
+            <QueryOutcomeView outcome={outcome} />
+            <SolveStep
+              signedIn={Boolean(session.data)}
+              sessionPending={session.isPending}
+              pending={solve.isPending}
+              error={solve.error}
+              dueOn={solve.data?.due_on}
+              counted={solve.data?.counted}
+              onSolve={() => solve.mutate()}
+            />
+          </div>
+          {tasks.length > 0 ? (
+            <aside className="border-t-2 border-dashed border-stone-300 pt-3 lg:border-t-0 lg:border-l-2 lg:pt-0 lg:pl-4">
+              <h2 className="text-sm font-bold">Задачи</h2>
+              <ol className="mt-3 grid gap-3">
+                {tasks.map((task, index) => (
+                  <li key={task.prompt} className="flex gap-2 text-sm leading-relaxed">
+                    <span className="font-semibold text-indigo-700">{index + 1}</span>
+                    <span>{task.prompt}</span>
+                  </li>
+                ))}
+              </ol>
+            </aside>
+          ) : null}
+        </div>
+      </section>
+
+      <nav aria-label="Соседние шаги" className="flex flex-wrap gap-3">
+        {previous ? (
+          <Link to={previous.href} className={buttonQuietClass}>
+            Предыдущая
+          </Link>
+        ) : null}
+        {next ? (
+          <Link
+            to={next.href}
+            className="sketch-button ml-auto inline-flex min-h-11 items-center justify-center bg-emerald-300 px-4 text-sm font-semibold text-pencil"
+          >
+            Следующая
+          </Link>
+        ) : null}
+      </nav>
+    </div>
+  );
+}
+
+type QueryOutcome = { kind: "rows"; result: QueryResult } | { kind: "error"; message: string };
+
+function QueryOutcomeView({ outcome }: { outcome: QueryOutcome | null }) {
+  if (!outcome) return null;
+  if (outcome.kind === "error") {
+    return (
+      <p className="mt-3 text-sm text-rose-800" aria-live="polite">
+        {outcome.message}
+      </p>
+    );
+  }
+  if (outcome.result.columns.length === 0) {
+    return (
+      <p className="mt-3 text-sm text-stone-700" aria-live="polite">
+        Команда выполнена.
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3 max-h-64 w-fit max-w-full overflow-auto" aria-live="polite">
+      <table className="w-max border-2 border-stone-800 text-left text-xs">
+        <thead className="bg-emerald-100">
+          <tr>
+            {outcome.result.columns.map((column, index) => (
+              <th
+                key={`${column}-${index}`}
+                className="border border-stone-800 px-2 py-1 font-semibold whitespace-nowrap"
+              >
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {outcome.result.rows.length === 0 ? (
+            <tr>
+              <td
+                className="border border-stone-300 px-2 py-1 text-stone-500"
+                colSpan={outcome.result.columns.length}
+              >
+                Пустой результат
+              </td>
+            </tr>
+          ) : (
+            outcome.result.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, index) => (
+                  <td
+                    key={`${rowIndex}-${index}`}
+                    className="border border-stone-300 px-2 py-1 font-code whitespace-nowrap"
+                  >
+                    {cell === null ? <span className="text-stone-400">NULL</span> : String(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const tokenClass: Record<SqlTokenKind, string> = {
+  keyword: "font-semibold text-indigo-700",
+  string: "text-emerald-800",
+  number: "text-amber-800",
+  comment: "text-stone-500",
+  plain: "text-stone-900",
+};
+
+function SqlCode({ source }: { source: string }) {
+  return highlightSql(source).map((token, index) => (
+    <span key={`${token.kind}-${index}`} className={tokenClass[token.kind]}>
+      {token.text}
+    </span>
+  ));
+}
+
+function SqlField({
+  value,
+  onChange,
+  onKeyDown,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+}) {
+  const backdrop = useRef<HTMLPreElement>(null);
+
+  function syncScroll(event: UIEvent<HTMLTextAreaElement>) {
+    if (!backdrop.current) return;
+    backdrop.current.scrollTop = event.currentTarget.scrollTop;
+    backdrop.current.scrollLeft = event.currentTarget.scrollLeft;
+  }
+
+  return (
+    <div className="relative h-40 border-2 border-stone-800 bg-canvas">
+      <pre
+        ref={backdrop}
+        aria-hidden="true"
+        className="pointer-events-none h-full overflow-auto py-3 pr-12 pl-3 font-code text-sm leading-6 whitespace-pre-wrap"
+      >
+        {value ? <SqlCode source={value} /> : <span className="text-stone-400">Введите SELECT</span>}
+        {"\n"}
+      </pre>
+      <label className="absolute inset-0">
+        <span className="sr-only">Текст запроса</span>
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={onKeyDown}
+          onScroll={syncScroll}
+          spellCheck={false}
+          className="h-full w-full resize-none bg-transparent py-3 pr-12 pl-3 font-code text-sm leading-6 whitespace-pre-wrap text-transparent caret-stone-900 outline-none"
+        />
+      </label>
+    </div>
+  );
+}
+
+function ExampleTable({ table }: { table: LessonTable }) {
+  return (
+    <div className="w-fit max-w-full overflow-x-auto">
+      <p className="mb-1 text-xs font-bold tracking-wide text-stone-600 uppercase">{table.name}</p>
+      <table className="w-max max-w-full border-2 border-stone-800 text-left text-xs">
+        <thead className="bg-amber-100">
+          <tr>
+            {table.columns.map((column) => (
+              <th key={column} className="border border-stone-800 px-2 py-1 font-semibold whitespace-nowrap">
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row) => (
+            <tr key={row.join("|")}>
+              {row.map((cell, index) => (
+                <td key={`${cell}-${index}`} className="border border-stone-300 px-2 py-1 font-code whitespace-nowrap">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -194,18 +339,7 @@ function SolveStep({
   counted?: boolean;
   onSolve: () => void;
 }) {
-  const { pathname } = useLocation();
-  if (sessionPending) return null;
-  if (!signedIn) {
-    return (
-      <Link
-        to={`/login?next=${encodeURIComponent(pathname)}`}
-        className={`${buttonQuietClass} mt-3`}
-      >
-        Войдите, чтобы засчитать день
-      </Link>
-    );
-  }
+  if (sessionPending || !signedIn) return null;
   return (
     <div className="mt-3">
       <button

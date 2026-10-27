@@ -15,10 +15,10 @@ export function HomePage() {
         </p>
         <h1 className="mt-1 text-4xl font-bold">SQL по одному адресу за шаг</h1>
         <p className="mt-3 text-stone-800">
-          Выборка, соединения, паттерны, масштаб и архитектура. Прогресс остаётся в аккаунте.
+          Сначала короткий учебник, потом паттерны запросов и схема, которая выдерживает рост. Прогресс остаётся в аккаунте.
         </p>
-        <Link to="/learn" className={`${buttonClass} mt-5`}>
-          Открыть доску
+        <Link to="/learn/tutorial/introduction" className={`${buttonClass} mt-5`}>
+          Начать учебник
         </Link>
       </section>
       <section aria-label="Разделы курса">

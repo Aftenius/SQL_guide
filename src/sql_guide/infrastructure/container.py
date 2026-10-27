@@ -15,6 +15,7 @@ from sql_guide.application.learner_model import (
 )
 from sql_guide.application.practice import GetPracticeCalendar, RecordSolve
 from sql_guide.application.register_user import RegisterUser
+from sql_guide.application.run_query import RunPracticeQuery
 from sql_guide.application.sessions import (
     GetCurrentLearner,
     LoginUser,
@@ -29,6 +30,7 @@ from sql_guide.infrastructure.model_probe import HttpxModelProbe
 from sql_guide.infrastructure.persistence.unit_of_work import (
     SqlAlchemyUnitOfWorkFactory,
 )
+from sql_guide.infrastructure.sandbox import PostgresSandbox
 from sql_guide.infrastructure.security import (
     BcryptPasswordHasher,
     JwtAccessTokenIssuer,
@@ -61,6 +63,7 @@ class AppContainer:
         clear_learner_model: Use case that removes the saved model key.
         check_learner_model: Use case that asks the provider to accept the key.
         read_learner_model_key: Server-side read of the decrypted key.
+        run_practice_query: Use case that runs one statement in the sandbox.
     """
 
     settings: Settings
@@ -80,6 +83,7 @@ class AppContainer:
     clear_learner_model: ClearLearnerModel
     check_learner_model: CheckLearnerModel
     read_learner_model_key: ReadLearnerModelKey
+    run_practice_query: RunPracticeQuery
 
 
 def build_container(settings: Settings | None = None) -> AppContainer:
@@ -158,5 +162,8 @@ def build_container(settings: Settings | None = None) -> AppContainer:
         read_learner_model_key=ReadLearnerModelKey(
             unit_of_work,
             FernetModelCipher(resolved.model_key_secret()),
+        ),
+        run_practice_query=RunPracticeQuery(
+            PostgresSandbox(resolved.sandbox_database_url)
         ),
     )

@@ -25,7 +25,7 @@ export function Breadcrumbs() {
                   {item.label}
                 </span>
               ) : (
-                <Link to={item.href} className="inline-flex min-h-11 items-center text-stone-600 underline">
+                <Link to={item.href} className="text-stone-600 underline">
                   {item.label}
                 </Link>
               )}

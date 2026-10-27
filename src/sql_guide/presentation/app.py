@@ -11,10 +11,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from sql_guide.infrastructure.container import AppContainer, build_container
 from sql_guide.infrastructure.event_loop import use_selector_event_loop
+from sql_guide.infrastructure.sandbox import ensure_sandbox
 from sql_guide.presentation.auth import create_auth_router
 from sql_guide.presentation.errors import register_domain_errors
 from sql_guide.presentation.learner_model import create_learner_model_router
 from sql_guide.presentation.practice import create_practice_router
+from sql_guide.presentation.query import create_query_router
 from sql_guide.presentation.schemas import HealthResponse
 
 use_selector_event_loop()
@@ -54,6 +56,8 @@ def create_app(container: AppContainer | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.engine = resolved.engine
+        if resolved.engine is not None:
+            await ensure_sandbox(resolved.settings.database_url)
         yield
         engine = getattr(app.state, "engine", None)
         if engine is not None:
@@ -71,6 +75,7 @@ def create_app(container: AppContainer | None = None) -> FastAPI:
     app.include_router(create_health_router(resolved))
     app.include_router(create_auth_router(resolved))
     app.include_router(create_practice_router(resolved))
+    app.include_router(create_query_router(resolved))
     app.include_router(create_learner_model_router(resolved))
     return app
 

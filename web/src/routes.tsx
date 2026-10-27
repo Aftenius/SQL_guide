@@ -24,7 +24,6 @@ export const router = createBrowserRouter([
       },
       {
         path: "learn",
-        handle: { crumb: "Обучение" },
         children: [
           { index: true, element: <TracksPage /> },
           {

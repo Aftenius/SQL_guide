@@ -6,7 +6,19 @@ from typing import Protocol
 
 from sql_guide.domain.errors import UnsafeSql
 
-_LEARNER_START = frozenset({"select", "with", "insert", "update", "delete", "values"})
+_LEARNER_START = frozenset(
+    {
+        "select",
+        "with",
+        "insert",
+        "update",
+        "delete",
+        "values",
+        "create",
+        "alter",
+        "drop",
+    }
+)
 _SETUP_START = _LEARNER_START | frozenset({"create", "drop", "alter", "truncate"})
 _FORBIDDEN = frozenset(
     {

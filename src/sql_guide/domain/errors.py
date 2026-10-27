@@ -45,6 +45,10 @@ class SandboxSetupFailed(DomainError):
     """Raised when trusted setup SQL cannot be applied."""
 
 
+class UnknownPracticeDatabase(DomainError):
+    """Raised when a query names a practice database that does not exist."""
+
+
 class InvalidLessonKey(DomainError):
     """Raised when a track or lesson slug cannot be stored."""
 

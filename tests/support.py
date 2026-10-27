@@ -13,6 +13,7 @@ from sql_guide.application.learner_model import (
 )
 from sql_guide.application.practice import GetPracticeCalendar, RecordSolve
 from sql_guide.application.register_user import RegisterUser
+from sql_guide.application.run_query import RunPracticeQuery
 from sql_guide.application.sessions import (
     GetCurrentLearner,
     LoginUser,
@@ -20,6 +21,7 @@ from sql_guide.application.sessions import (
     RefreshSession,
 )
 from sql_guide.application.yandex_sign_in import SignInWithYandex
+from sql_guide.domain.sandbox import QueryResult
 from sql_guide.infrastructure.config import Settings
 from sql_guide.infrastructure.container import AppContainer
 from sql_guide.infrastructure.model_cipher import FernetModelCipher
@@ -162,7 +164,17 @@ def build_test_container() -> AppContainer:
             harness.model_probe,
         ),
         read_learner_model_key=ReadLearnerModelKey(harness.factory, _test_cipher()),
+        run_practice_query=RunPracticeQuery(_QuietSandbox()),
     )
+
+
+class _QuietSandbox:
+    """Sandbox double that returns no rows. Tests that need rows bring their own."""
+
+    async def execute(self, setup: object, statement: str) -> QueryResult:
+        """Ignore the statement and return an empty result."""
+        del setup, statement
+        return QueryResult((), ())
 
 
 def _test_cipher() -> FernetModelCipher:

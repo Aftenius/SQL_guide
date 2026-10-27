@@ -100,6 +100,20 @@ class CheckLearnerModelRequest(BaseModel):
     api_key: str = ""
 
 
+class QueryRequest(BaseModel):
+    """Learner statement and the practice database it should see."""
+
+    database: str
+    sql: str
+
+
+class QueryResponse(BaseModel):
+    """Rows returned by one learner statement."""
+
+    columns: list[str]
+    rows: list[list[str | int | float | bool | None]]
+
+
 class PracticeCalendarResponse(BaseModel):
     """Solved days and scheduled reviews for the profile."""
 

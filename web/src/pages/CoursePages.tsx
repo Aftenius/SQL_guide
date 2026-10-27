@@ -9,6 +9,7 @@ import {
   tracks,
 } from "../catalog";
 import { SketchLesson } from "../components/SketchLesson";
+import { lessonBody } from "../lessonBodies";
 import type { SketchMode } from "../components/SchemaCanvas";
 import { buttonQuietClass, cardClass } from "../components/ui";
 import { usePageTitle } from "../title";
@@ -20,7 +21,7 @@ export function TracksPage() {
     <section>
       <h1 className="text-4xl font-bold">Обучение</h1>
       <p className="mt-3 max-w-2xl text-base text-stone-600">
-        Четыре раздела. Адрес шага остаётся, когда на доске появится проверка.
+        Короткий учебник, затем паттерны запросов и схема, которая выдерживает рост.
       </p>
       <ul className="mt-8 grid gap-4 sm:grid-cols-2">
         {tracks.map((track) => (
@@ -87,6 +88,7 @@ export function LessonPage() {
       badge={track.title}
       title={lesson.title}
       summary={lesson.summary}
+      body={lessonBody(track.slug, lesson.slug)}
       mode={sketchMode(lesson.slug)}
       track={track.slug}
       lesson={lesson.slug}
@@ -105,8 +107,16 @@ export function LessonPage() {
 }
 
 function sketchMode(slug: string): SketchMode {
-  if (slug === "joins" || slug === "row-multiplication") return "join";
-  if (slug === "aggregates" || slug === "execution-order") return "group";
+  if (
+    slug === "joins" ||
+    slug === "inner-join" ||
+    slug === "outer-join" ||
+    slug === "join-algorithms" ||
+    slug === "row-multiplication"
+  ) {
+    return "join";
+  }
+  if (slug === "aggregates" || slug === "windows") return "group";
   return "tables";
 }
 

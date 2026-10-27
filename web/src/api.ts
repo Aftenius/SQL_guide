@@ -28,6 +28,8 @@ const detailText: Record<string, string> = {
   "Yandex sign-in could not be confirmed": "Яндекс не подтвердил вход. Начните ещё раз.",
   "Yandex sign-in failed": "Яндекс не завершил вход.",
   "Lesson key is invalid": "Такого шага нет.",
+  "Unknown practice database": "Такой учебной базы нет.",
+  "Practice tables could not be prepared": "Не удалось подготовить таблицы.",
   "Model choice is invalid": "Такой модели в списке нет.",
   "API key is invalid": "Ключ должен начинаться с sk- и быть длиннее.",
   "Saved API key cannot be read": "Сохранённый ключ не читается. Введите его ещё раз.",
@@ -160,6 +162,20 @@ export async function checkLearnerModel(
   await request("/me/model/check", z.null(), {
     method: "POST",
     body: JSON.stringify({ provider, model, api_key: apiKey }),
+  });
+}
+
+const queryResultSchema = z.object({
+  columns: z.array(z.string()),
+  rows: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))),
+});
+
+export type QueryResult = z.infer<typeof queryResultSchema>;
+
+export async function runQuery(database: string, sql: string): Promise<QueryResult> {
+  return request("/query", queryResultSchema, {
+    method: "POST",
+    body: JSON.stringify({ database, sql }),
   });
 }
 
